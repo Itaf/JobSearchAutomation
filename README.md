@@ -43,7 +43,7 @@ keep building up on the website to make it public. Also, the implemented machine
 trained on a list of past job offers to predict which job applications are likely to lead to job offers. This should
 further optimize the recommendations and enhance the classification performance
 
-## References:
+## References
 
 [1] Hab, M. (2017, April 22). Online Job Postings. Retrieved March 2, 2019, from
 https://www.kaggle.com/madhab/jobposts.
