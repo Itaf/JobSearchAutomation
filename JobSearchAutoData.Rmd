@@ -1,0 +1,546 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+
+#Import libraries and/or packages...
+
+```{r}
+library(ggplot2)
+library(scales)
+library(cluster)
+library(fpc)
+library(grDevices)
+library(plyr)
+library(class)
+library(tree)
+library(rpart)
+library(e1071)
+library(nnet)
+```
+
+
+#Data Exploration...
+
+```{r}
+jobsData <- read.csv("Job Posts.csv")
+head(jobsData)
+str(jobsData)
+summary(jobsData)
+```
+
+```{r}
+candidatesData <- read.csv("Job Search Questionnaire (Responses).csv")
+head(candidatesData)
+str(candidatesData)
+summary(candidatesData)
+```
+
+
+#Visualize candidates' age and gender information...
+
+```{r}
+summary(candidatesData$Age.Range)
+qplot(Age.Range, data=candidatesData, main="Age Ranges Bar Chart", xlab="Age (years)", ylab="Candidates")
+```
+
+```{r}
+summary(candidatesData$Gender)
+qplot(Gender, data=candidatesData, main="Genders Bar Chart", xlab="Gender", ylab="Candidates")
+```
+
+
+#Visualize candidates' education information...
+
+```{r}
+summary(candidatesData$Degree)
+qplot(Degree, data=candidatesData, fill=Gender, main="Degrees Bar Chart", xlab="Degree", ylab="Candidates") + coord_flip()
+```
+
+```{r}
+summary(candidatesData$Major)
+qplot(Major, data=candidatesData, fill=Gender, main="Majors Bar Chart", xlab="Major", ylab="Candidates") + coord_flip()
+```
+
+```{r}
+summary(candidatesData$Minor.Specialization)
+qplot(Minor.Specialization, data=candidatesData, fill=Gender, main="Minors/Specializations Bar Chart", xlab="Minor/Specializations", ylab="Candidates") + coord_flip()
+```
+
+
+#Visualize different aspects about candidates according to their age and gender information...
+
+```{r}
+qplot(Age.Range, Status, data=candidatesData, colour=Gender, main="Employment Status vs. Age Range", xlab="Age Range", ylab="Status") + geom_point(size=3)
+```
+
+```{r}
+ggplot(subset(candidatesData)) +
+    geom_bar(aes(Age.Range)) +
+    facet_wrap(~Status, scales="free_y") +
+    theme(axis.text.x=element_text(size=rel(0.8)))
+```
+
+
+#Visualize candidates' job search activity and work availability...
+
+```{r}
+summary(candidatesData$Activity)
+qplot(Activity, data=candidatesData, main="Job Search Bar Chart", xlab="Activity", ylab="Candidates")
+```
+
+```{r}
+summary(candidatesData$Availability)
+qplot(Availability, data=candidatesData, fill=Status, main="Availability Bar Chart", xlab="Availability", ylab="Candidates") + coord_flip()
+```
+
+```{r}
+summary(candidatesData$Graduation.Date)
+qplot(Graduation.Date, data=candidatesData, fill=Status, main="Graduation Dates Bar Chart", xlab="Grduation Date", ylab="Candidates") + coord_flip()
+```
+
+
+#Visualize job posting dates...
+
+```{r}
+summary(jobsData$date)
+qplot(jobsData$Year, jobsData$Month, main="Job Posting Dates", xlab="Year", ylab="Month") 
+qplot(jobsData$Year, data=jobsData, binwidth=3, main="Jobs per Year", xlab="Year", ylab="Jobs") 
+qplot(jobsData$Month, data=jobsData, binwidth=3, main="Jobs per Month", xlab="Month", ylab="Jobs") 
+```
+
+
+#Summarize the number of job Posts per Company...
+
+```{r}
+summary(jobsData$Company)
+```
+
+
+#Visualize the number of IT jobs...
+
+```{r}
+summary(jobsData$IT)
+qplot(IT, data=jobsData, main="IT Jobs", xlab="IT", ylab="Jobs")  
+```
+
+```{r}
+ggplot(subset(jobsData)) +
+    geom_bar(aes(Year)) +
+    facet_wrap(~IT, scales="free_y") +
+    theme(axis.text.x=element_text(size=rel(0.8)))
+```
+
+
+#Visualize job and candidates' preferred work locations...
+
+```{r}
+summary(jobsData$Location)
+```
+
+```{r}
+summary(candidatesData$Country)
+qplot(Country, data=candidatesData, fill=City, main="Preferred Work Locations", xlab="Country", ylab="Candidates")
+```
+
+```{r}
+summary(candidatesData$Province.State)
+qplot(Province.State, data=candidatesData, main="Preferred Work Provinces/States", xlab="Province/State", ylab="Candidates") 
+```
+
+```{r}
+summary(candidatesData$City)
+qplot(City, data=candidatesData, main="Preferred Work Cities", xlab="City", ylab="Candidates") 
+```
+
+
+#The next 2 chunks are to compare posted job titles and candidates' desired job titles...
+
+```{r}
+summary(jobsData$Title)
+```
+
+```{r}
+summary(candidatesData$Job.Title)
+qplot(Job.Title, data=candidatesData, main="Candidates per Job Title", xlab="Job Title", ylab="Candidates") + coord_flip()
+```
+
+
+#The next 3 chunks are to compare the eligibility requirements and the audience of job posts, with the candidates' employment statuses and experience levels...
+
+```{r}
+summary(jobsData$Eligibility)
+summary(jobsData$Audience)
+```
+
+```{r}
+summary(candidatesData$Status)
+qplot(Status, data=candidatesData, fill=Age.Range, main="Employment Statuses Bar Chart", xlab="Status", ylab="Candidates") + coord_flip()
+```
+
+```{r}
+summary(candidatesData$Experience.Level)
+qplot(Experience.Level, data=candidatesData, fill=Status, main="Experience Levels Bar Chart", xlab="Experience Level", ylab="Candidates") 
+```
+
+
+#The next 3 chunks are to compare between the posted work terms and/or durations, and the candidates' desired employment types...
+
+```{r}
+summary(jobsData$Term)
+```
+
+```{r}
+summary(jobsData$Duration)
+```
+
+```{r}
+summary(candidatesData$Employment.Types)
+qplot(Employment.Types, data=candidatesData, fill=Experience.Level, main="Employment Types Bar Chart", xlab="Employment Type", ylab="Candidates") + coord_flip()
+```
+
+
+#Load the processed dataset...
+
+```{r}
+source("processing.R") #an R script for data processing and feature extraction
+job_candidate <- data.frame(job_candidate)
+summary(job_candidate)
+head(job_candidate)
+str(job_candidate)
+```
+
+
+#Prepare the data for training/testing...
+
+```{r}
+#take 70% of the data for training...
+#training <- job_candidate[1:425622,] 
+
+#leave 30% of the data for testing...
+#testing <- job_candidate[425623:608032,]
+```
+
+
+## Index used to determine optimal number of clusters...
+
+```{r}
+Davies.Bouldin <- function(A, SS, m) {
+  # A  - the centres of the clusters
+  # SS - the within sum of squares
+  # m  - the sizes of the clusters
+  N <- nrow(A)   # number of clusters
+  # intercluster distance
+  S <- sqrt(SS/m)
+  # Get the distances between centres
+  M <- as.matrix(dist(A))
+  # Get the ratio of intercluster/centre.dist
+  R <- matrix(0, N, N)
+  for (i in 1:(N-1)) {
+    for (j in (i+1):N) {
+      R[i,j] <- (S[i] + S[j])/M[i,j]
+      R[j,i] <- R[i,j]
+    }
+  }
+  return(mean(apply(R, 1, max)))
+}
+```
+
+
+#Unsupervised Machine Learning...
+
+##K-means Clustering:-
+
+###Candidates Data:
+```{r}
+#transform the data into numeric values...
+candidatesDataNumeric <- candidatesData
+candidatesDataNumeric[,1] <- as.numeric(candidatesDataNumeric[,1])
+candidatesDataNumeric[,2] <- as.numeric(candidatesDataNumeric[,2])
+candidatesDataNumeric[,3] <- as.numeric(candidatesDataNumeric[,3])
+candidatesDataNumeric[,4] <- as.numeric(candidatesDataNumeric[,4])
+candidatesDataNumeric[,5] <- as.numeric(candidatesDataNumeric[,5])
+candidatesDataNumeric[,6] <- as.numeric(candidatesDataNumeric[,6])
+candidatesDataNumeric[,7] <- as.numeric(candidatesDataNumeric[,7])
+candidatesDataNumeric[,8] <- as.numeric(candidatesDataNumeric[,8])
+candidatesDataNumeric[,9] <- as.numeric(candidatesDataNumeric[,9])
+candidatesDataNumeric[,10] <- as.numeric(candidatesDataNumeric[,10])
+candidatesDataNumeric[,11] <- as.numeric(candidatesDataNumeric[,11])
+candidatesDataNumeric[,12] <- as.numeric(candidatesDataNumeric[,12])
+candidatesDataNumeric[,13] <- as.numeric(candidatesDataNumeric[,13])
+candidatesDataNumeric[,14] <- as.numeric(candidatesDataNumeric[,14])
+candidatesDataNumeric[,15] <- as.numeric(candidatesDataNumeric[,15])
+candidatesDataNumeric[,16] <- as.numeric(candidatesDataNumeric[,16])
+candidatesDataNumeric[,17] <- as.numeric(candidatesDataNumeric[,17])
+candidatesDataNumeric[,18] <- as.numeric(candidatesDataNumeric[,18])
+candidatesDataNumeric[,19] <- as.numeric(candidatesDataNumeric[,19])
+candidatesDataNumeric[,20] <- as.numeric(candidatesDataNumeric[,20])
+
+cl.candidates.fit <- kmeans(candidatesDataNumeric, 2)
+#get cluster means 
+aggregate(candidatesDataNumeric, by=list(cl.candidates.fit$cluster), FUN=mean)
+
+#append cluster assignment
+results <- data.frame(candidatesDataNumeric, cl.candidates.fit$cluster)
+
+a <- tapply(candidatesDataNumeric$Hard.Skills, cl.candidates.fit$cluster, mean)
+b <- tapply(candidatesDataNumeric$Soft.Skills, cl.candidates.fit$cluster, mean)
+kcenters <- data.frame(a,b)
+ggplot(cbind(candidatesDataNumeric, cluster=factor(cl.candidates.fit$cluster))) +
+   geom_point(aes(Hard.Skills, Soft.Skills, col=cluster), size=2) +
+   geom_point(data=cbind(kcenters, cluster=factor(1:nrow(kcenters))), aes(a,b), pch=8, size=10) + 
+   theme_bw()
+
+#Visualize the clustering results...
+
+#Cluster Plot against 1st 2 Principal Components
+clusplot(candidatesDataNumeric, cl.candidates.fit$cluster)
+
+#Centroid Plot against 1st 2 Discriminant Functions
+plotcluster(candidatesDataNumeric, cl.candidates.fit$cluster)
+```
+
+
+###Jobs Data:
+```{r}
+#transform the data into numeric values...
+jobsDataNumeric <- jobsData
+jobsDataNumeric[,1] <- as.numeric(jobsDataNumeric[,1])
+jobsDataNumeric[,2] <- as.numeric(jobsDataNumeric[,2])
+jobsDataNumeric[,3] <- as.numeric(jobsDataNumeric[,3])
+jobsDataNumeric[,4] <- as.numeric(jobsDataNumeric[,4])
+jobsDataNumeric[,5] <- as.numeric(jobsDataNumeric[,5])
+jobsDataNumeric[,6] <- as.numeric(jobsDataNumeric[,6])
+jobsDataNumeric[,7] <- as.numeric(jobsDataNumeric[,7])
+jobsDataNumeric[,8] <- as.numeric(jobsDataNumeric[,8])
+jobsDataNumeric[,9] <- as.numeric(jobsDataNumeric[,9])
+jobsDataNumeric[,10] <- as.numeric(jobsDataNumeric[,10])
+jobsDataNumeric[,11] <- as.numeric(jobsDataNumeric[,11])
+jobsDataNumeric[,12] <- as.numeric(jobsDataNumeric[,12])
+jobsDataNumeric[,13] <- as.numeric(jobsDataNumeric[,13])
+jobsDataNumeric[,14] <- as.numeric(jobsDataNumeric[,14])
+jobsDataNumeric[,15] <- as.numeric(jobsDataNumeric[,15])
+jobsDataNumeric[,16] <- as.numeric(jobsDataNumeric[,16])
+jobsDataNumeric[,17] <- as.numeric(jobsDataNumeric[,17])
+jobsDataNumeric[,18] <- as.numeric(jobsDataNumeric[,18])
+jobsDataNumeric[,19] <- as.numeric(jobsDataNumeric[,19])
+jobsDataNumeric[,20] <- as.numeric(jobsDataNumeric[,20])
+jobsDataNumeric[,21] <- as.numeric(jobsDataNumeric[,21])
+jobsDataNumeric[,22] <- as.numeric(jobsDataNumeric[,22])
+jobsDataNumeric[,23] <- as.numeric(jobsDataNumeric[,23])
+jobsDataNumeric[,24] <- as.numeric(jobsDataNumeric[,24])
+jobsDataNumeric[,25] <- as.numeric(jobsDataNumeric[,25])
+
+#replace NA's with zeros...
+jobsDataNumeric[is.na(jobsDataNumeric)] <- 0
+
+#perform k-means clustering...
+cl.jobs.fit <- kmeans(jobsDataNumeric, 5, iter.max = 10)
+
+#get cluster means 
+aggregate(jobsDataNumeric, by=list(cl.jobs.fit$cluster), FUN=mean)
+
+#append cluster assignment
+results <- data.frame(jobsDataNumeric, cl.jobs.fit$cluster)
+
+a <- tapply(jobsDataNumeric$RequiredQual, cl.jobs.fit$cluster, mean)
+b <- tapply(jobsDataNumeric$Eligibility, cl.jobs.fit$cluster, mean)
+kcenters <- data.frame(a,b)
+ggplot(cbind(jobsDataNumeric, cluster=factor(cl.jobs.fit$cluster))) +
+   geom_point(aes(RequiredQual, Eligibility, col=cluster), size=2) +
+   geom_point(data=cbind(kcenters, cluster=factor(1:nrow(kcenters))), aes(a,b), pch=8, size=10) + 
+   theme_bw()
+
+#Visualize the clustering results...
+
+#Cluster Plot against 1st 2 Principal Components
+clusplot(jobsDataNumeric, cl.jobs.fit$cluster)
+
+#Centroid Plot against 1st 2 Discriminant Functions
+plotcluster(jobsDataNumeric, cl.jobs.fit$cluster)
+```
+
+
+###Job-Candidate Data:
+```{r}
+#perform K-means clustering analysis
+cl.fit1 <- kmeans(job_candidate[,1:13], 3)
+
+#get cluster means 
+aggregate(job_candidate[,1:13], by=list(cl.fit1$cluster), FUN=mean)
+
+#append cluster assignment
+results1 <- data.frame(job_candidate[,1:13], cl.fit1$cluster)
+
+a <- tapply(job_candidate$X12, cl.fit1$cluster, mean)
+b <- tapply(job_candidate$X13, cl.fit1$cluster, mean)
+kcenters <- data.frame(a,b)
+ggplot(cbind(job_candidate[,1:13], cluster=factor(cl.fit1$cluster)), xlab="Hard Skills Match", ylab="Soft Skills Match") +
+   geom_point(aes(X12, X13, col=cluster), size=2) +
+   geom_point(data=cbind(kcenters, cluster=factor(1:nrow(kcenters))), aes(a,b), pch=8, size=10) + 
+   theme_bw()
+
+#Visualize the clustering results...
+
+#Cluster Plot against 1st 2 Principal Components
+clusplot(job_candidate[,1:13], cl.fit1$cluster)
+
+#Centroid Plot against 1st 2 Discriminant Functions
+plotcluster(job_candidate[,1:13], cl.fit1$cluster)
+```
+
+
+##Hierarchical Clustering:-
+```{r}
+cl.fit2 <- hclust(dist(job_candidate[1:10000,1:13][c("X1","X2","X3","X4","X5","X6","X7","X8","X9","X10","X11","X12","X13")]), method="complete")
+plot(cl.fit2, xlab="", main="Complete linkage", sub="")
+```
+
+```{r}
+classification <- cutree(cl.fit2, k=2)
+results2 <- data.frame(job_candidate[1:10000,1:13], factor(classification))
+qplot(X12, X13,  data=mutate(job_candidate[1:10000,1:13], classification=factor(classification)), color=factor(classification))
+```
+
+
+
+```{r}
+#leave 30% of dataset for testing...
+test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.7,0.3))
+train <- !test
+```
+
+
+#Supervised Machine Learning...
+
+##Linear Regression:-
+```{r}
+lr.fit <- glm(X14 ~ ., data=job_candidate, family=binomial, subset=train)
+summary(lr.fit)
+
+#model's response consists of probabilities...
+lr.prob <- predict(lr.fit, type="response", data=subset(job_candidate, train))
+lr.prob[1:5]
+
+#convert the probabilities to predicted values...
+lr.pred <- cut(lr.prob, breaks=c(0,0.5,1), labels=c("0", "1"), include.lowest=TRUE)
+lr.pred[1:5]
+
+#construct the confusion matrix...
+lr.cm <- table(Actual=job_candidate$X14[train], Predicted=lr.pred)
+lr.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(lr.cm)) / sum(lr.cm)
+lr.cm["1", "1"] / sum(lr.cm["1", ])
+lr.cm["0", "0"] / sum(lr.cm["0", ])
+lr.cm["1", "1"] / sum(lr.cm[, "1"])
+```
+
+
+```{r}
+#model's response consists of probabilities...
+test.prob <- predict(lr.fit, type="response", newdata=subset(job_candidate, test))
+
+#convert the probabilities to predicted values...
+test.pred <- cut(test.prob, breaks=c(0,0.5,1), labels=c("0", "1"), include.lowest=TRUE)
+
+#construct the confusion matrix...
+test.cm <- table(Actual=job_candidate$X14[test], Predicted=test.pred)
+test.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(test.cm)) / sum(test.cm) 
+test.cm["1", "1"] / sum(test.cm["1", ])
+test.cm["0", "0"] / sum(test.cm["0", ])
+test.cm["1", "1"] / sum(test.cm[, "1"])
+```
+
+
+```{r}
+roc.plot <- function(Actual, Prob) 
+{
+    ss <- lapply(seq(0.01, 1-0.01, by=0.01), function(p) 
+    {
+        tt <- table(Actual, factor(Prob>p, levels=c(FALSE, TRUE)))
+        data.frame(sensitivity=tt[2,2]/sum(tt[2,]),
+                    specificity=tt[1,1]/sum(tt[1,])) 
+    })
+    
+    ss <- do.call("rbind", ss)
+    qplot(1-specificity, sensitivity, data=ss) +
+        xlim(0,1) + ylim(0,1) +
+        geom_abline(intercept=0, slope=1) + theme_bw()
+}
+
+roc.plot(job_candidate$X14[test], test.prob)
+```
+
+
+##K-Nearest Neighbours:-
+```{r}
+knn.train.fit <- model.matrix(X14 ~ ., data=subset(job_candidate,train))
+knn.test.fit <- model.matrix(X14 ~ ., data=subset(job_candidate,test))
+knn.train.res <- job_candidate$X14[train]
+knn.test.res <- knn(knn.train.fit, knn.test.fit, knn.train.res, k=10)
+table(Actual=job_candidate$X14[test], Predicted=knn.test.res)
+```
+
+
+##Decision Tree:-
+```{r}
+tree.fit <- rpart(X14 ~ ., data=subset(job_candidate, train), method="class")
+tree.fit
+
+#Visualize the results of the decision tree...
+plot(tree.fit) #plot decision tree
+text(tree.fit, cex=0.7) #label the decision tree plot
+
+post(tree.fit,file="C:/Users/ITAFO/Documents/DATA 5000/Project/Data/decisionTree.ps") #create postscript plot of decision tree
+
+plotcp(tree.fit) #plot cross-validation results
+printcp(tree.fit) #display cp table
+
+rsq.rpart(tree.fit) #plot approximate R-squared and relative error for different splits (2 plots)
+
+#Predict responses for test data...
+tree.pred <- predict(tree.fit, newdata=subset(job_candidate, test), type="class")
+tree.cm <- table(Actual=job_candidate$X14[test], Predicted=tree.pred)
+tree.cm
+
+#Calculate classification performance metrics...
+sum(diag(tree.cm)) / sum(tree.cm)       #accuracy
+tree.cm["1", "1"] / sum(tree.cm["1", ]) #sensitivity (recall)
+tree.cm["0", "0"] / sum(tree.cm["0", ]) #specificity
+tree.cm["1", "1"] / sum(tree.cm[, "1"]) #precision
+```
+
+
+##Naive Bayes:-
+```{r}
+nb.fit <- naiveBayes(X14 ~ ., data=job_candidate, subset=train)
+nb.pred <- predict(nb.fit, newdata=subset(job_candidate, test), type="class") 
+table(Actual=job_candidate$X14[test], Predicted=nb.pred)
+```
+
+
+##Neural Network:-
+```{r}
+nnet.fit <- nnet(X14 ~ ., data=job_candidate, subset=train, size=5)
+summary(nnet.fit)
+
+nnet.pred <- predict(nnet.fit, newdata=subset(job_candidate, test), type="class")
+table(Actual=job_candidate$X14[test], Predicted=nnet.pred)
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
