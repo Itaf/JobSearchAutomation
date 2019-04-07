@@ -1,5 +1,5 @@
-#jobsData <- read.csv("C:/Users/ITAFO/Documents/DATA 5000/Project/Data/Job Posts.csv")
-#candidatesData <- read.csv("C:/Users/ITAFO/Documents/DATA 5000/Project/Data/Job Search Questionnaire (Responses).csv")
+#jobsData <- read.csv("Job Posts.csv")
+#candidatesData <- read.csv("Job Search Questionnaire (Responses).csv")
 
 candidateSamples <- split(candidatesData, candidatesData$Timestamp)
 jobSamples <- split(jobsData, jobsData$job_id)
