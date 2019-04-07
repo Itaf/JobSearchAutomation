@@ -625,10 +625,10 @@ qplot(Hard.Skills, Soft.Skills, data=mutate(job_candidate[1:5000,1:9], classific
 
 ```{r}
 #take 90% of the data for training, and leave 10% for testing...
-#test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.9,0.1)) 
+test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.9,0.1)) 
 #test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.8,0.2)) 
 #test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.75,0.25)) 
-test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.7,0.3)) 
+#test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.7,0.3)) 
 #test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.6,0.4)) 
 train <- !test
 ```
@@ -857,50 +857,50 @@ ensemble <- function(t1, t2, t3, t4, t5)
     yes <- 0
     
     #check Yes's
-    if(t1[counter] == "Yes" || t1[counter] == "2")
+    if(t1[counter] == "Yes" || t1[counter] == 2)
     {
       yes = yes + 1
     }
-    if(t2[counter] == "Yes" || t2[counter] == "2")
+    if(t2[counter] == "Yes" || t2[counter] == 2)
     {
       yes = yes + 1
     }
-    if(t3[counter] == "Yes" || t3[counter] == "2")
+    if(t3[counter] == "Yes" || t3[counter] == 2)
     {
       yes = yes + 1
     }
-    if(t4[counter] == "Yes" || t4[counter] == "2")
+    if(t4[counter] == "Yes" || t4[counter] == 2)
     {
       yes = yes + 1
     }
     if(!is.null(t5))
     {
-      if(t5[counter] == "Yes" || t5[counter] == "2")
+      if(t5[counter] == "Yes" || t5[counter] == 2)
       {
         yes = yes + 1
       }
     }
     
     #check No's
-    if(t1[counter] == "No" || t1[counter] == "1")
+    if(t1[counter] == "No" || t1[counter] == 1)
     {
       no = no + 1
     }
-    if(t2[counter] == "No" || t2[counter] == "1")
+    if(t2[counter] == "No" || t2[counter] == 1)
     {
       no = no + 1
     }
-    if(t3[counter] == "No" || t3[counter] == "1")
+    if(t3[counter] == "No" || t3[counter] == 1)
     {
       no = no + 1
     }
-    if(t4[counter] == "No" || t4[counter] == "1")
+    if(t4[counter] == "No" || t4[counter] == 1)
     {
       no = no + 1
     }
     if(!is.null(t5))
     {
-      if(t5[counter] == "No" || t5[counter] == "1")
+      if(t5[counter] == "No" || t5[counter] == 1)
       {
         no = no + 1
       }
