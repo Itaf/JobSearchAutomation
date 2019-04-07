@@ -4,7 +4,10 @@
 candidateSamples <- split(candidatesData, candidatesData$Timestamp)
 jobSamples <- split(jobsData, jobsData$job_id)
 
-job_candidate <- matrix(0, nrow=length(candidateSamples)*length(jobSamples), ncol=14)
+job_candidate <- matrix(0, nrow=length(candidateSamples)*length(jobSamples), ncol=9)
+scores <- matrix(0, nrow=length(candidateSamples)*length(jobSamples), ncol=5)
+response <- matrix(0, nrow=length(candidateSamples)*length(jobSamples), ncol=1)
+
 index = 1
 
 for(j in jobSamples)
@@ -24,6 +27,7 @@ for(j in jobSamples)
   
   for(c in candidateSamples)
   {
+    #FEATURE EXTRACTION
     c$Gender <- tolower(c$Gender)
     
     #gender match
@@ -38,10 +42,11 @@ for(j in jobSamples)
     
     
     
+    ##EDUCATION
     c$Degree <- tolower(c$Degree)
     c$Degree <- strsplit(c$Degree,' ')
     
-    #degree percent match
+    ###degree percent match
     for(d in c$Degree[[1]])
     {
       if(grepl(d, j$jobpost, fixed=TRUE))
@@ -56,7 +61,7 @@ for(j in jobSamples)
     c$Major <- tolower(c$Major)
     c$Major <- strsplit(c$Major,' ')
     
-    #major percent match
+    ###major percent match
     for(m in c$Major[[1]])
     {
       if(grepl(m, j$jobpost, fixed=TRUE))
@@ -71,7 +76,7 @@ for(j in jobSamples)
     c$Minor.Specialization <- tolower(c$Minor.Specialization)
     c$Minor.Specialization <- strsplit(c$Minor.Specialization,' ')
     
-    #minor/specialization percent match
+    ###minor/specialization percent match
     for(i in c$Minor.Specialization[[1]])
     {
       if(grepl(i, j$jobpost, fixed=TRUE))
@@ -86,10 +91,11 @@ for(j in jobSamples)
     
     
     
+    ##AVAILABILITY
     c$Status <- tolower(c$Status)
     c$Status <- strsplit(c$Status,', ')
     
-    #need for a job
+    ###need for a job
     for(s in c$Status[[1]])
     {
       if(grepl("student", s, fixed=TRUE))
@@ -123,7 +129,7 @@ for(j in jobSamples)
     
     c$Activity <- tolower(c$Activity)
     
-    #desperity for a job
+    ###desperity for a job
     if(grepl("actively looking", c$Activity, fixed=TRUE))
     {
       job_candidate[index,5] <- 1
@@ -139,7 +145,7 @@ for(j in jobSamples)
     
     
     
-    #determine date available to start
+    ###determine date available to start
     if(!is.null(c$Availability) && length(c$Availability) != 0)
     {
       c$Availability <- tolower(c$Availability)
@@ -297,7 +303,7 @@ for(j in jobSamples)
       }
     }
     
-    #availability match
+    ###availability match
     if(is.null(c$Availability) ||  length(c$Availability) == 0 || c$Availability[[1]]=="")
     {
       job_candidate[index,6] <- 0
@@ -321,33 +327,92 @@ for(j in jobSamples)
     
     
     
+    ##QUALIFICATIONS
+    c$Experience.Level <- tolower(c$Experience.Level)
+    
+    ###experience level match
+    if(grepl(c$Experience.Level, j$Eligibility, fixed=TRUE) || grepl(c$Experience.Level, j$Audience, fixed=TRUE))
+    {
+      job_candidate[index,7] <- 1
+    }
+    else
+    {
+      job_candidate[index,7] <- 0.5
+    }
+    
+    
+    
+    c$Hard.Skills <- tolower(c$Hard.Skills)
+    c$Hard.Skills <- strsplit(c$Hard.Skills,', ')
+    
+    ###hard skills percent match
+    for(h in c$Hard.Skills[[1]])
+    {
+      if(grepl(h, j$jobpost, fixed=TRUE))
+      {
+        job_candidate[index,8] <- job_candidate[index,8] + 1
+      }
+    }
+    if(length(c$Hard.Skills[[1]]) != 0)
+    {
+      job_candidate[index,8] <- (job_candidate[index,8])/length(c$Hard.Skills[[1]])
+    }  
+    
+    
+    
+    c$Soft.Skills <- tolower(c$Soft.Skills)
+    c$Soft.Skills <- strsplit(c$Soft.Skills,', ')
+    
+    ###soft skills percent match
+    for(o in c$Soft.Skills[[1]])
+    {
+      if(grepl(o, j$jobpost, fixed=TRUE))
+      {
+        job_candidate[index,9] <- job_candidate[index,9] + 1
+      }
+    }
+    if(length(c$Soft.Skills[[1]]) != 0)
+    {
+      job_candidate[index,9] <- (job_candidate[index,9])/length(c$Soft.Skills[[1]])
+    }
+    
+    
+    
+    ###average match rate (i.e. total/final score)
+    #job_candidate[index,10] <- sum(job_candidate[index,1:9])/9
+    
+    
+    
+    #LABELLING RESPONSES...
+    
+    ##CANDIDATE PREFERENCES    
     c$Job.Title <- tolower(c$Job.Title)
     c$Job.Title <- strsplit(c$Job.Title,' ')
     
-    #title percent match
+    ###title percent match
     for(t in c$Job.Title[[1]])
     {
       if(grepl(t, j$Title, fixed=TRUE))
       {
-        job_candidate[index,7] <- (job_candidate[index,7]) + 1
+        scores[index,1] <- (scores[index,1]) + 1
       }
     }
-    job_candidate[index,7] <- (job_candidate[index,7])/(length(c$Job.Title[[1]]))
+    scores[index,1] <- (scores[index,1])/(length(c$Job.Title[[1]]))
     
     
     
     c$Employment.Types <- tolower(c$Employment.Types)
     c$Employment.Types <- strsplit(c$Employment.Types,', ')
     
-    #employment types percent match
+    ###employment types percent match
     for(e in c$Employment.Types[[1]])
     {
       if(grepl(e, j$Term, fixed=TRUE))
       {
-        job_candidate[index,8] <- (job_candidate[index,8]) + 1
+        scores[index,2] <- (scores[index,2]) + 1
       }
     }
-    job_candidate[index,8] <- (job_candidate[index,8])/(length(c$Employment.Types[[1]]))
+    scores[index,2] <- (scores[index,2])/(length(c$Employment.Types[[1]]))
     
     
     
@@ -368,9 +433,9 @@ for(j in jobSamples)
         } 
       }
       temp <- temp/length(n[[1]])
-      job_candidate[index,9] <- job_candidate[index,9] + temp
+      scores[index,3] <- scores[index,3] + temp
     }
-    job_candidate[index,9] <- (job_candidate[index,9])/(length(c$Industries[[1]]))
+    scores[index,3] <- (scores[index,3])/(length(c$Industries[[1]]))
     
     
     
@@ -391,70 +456,28 @@ for(j in jobSamples)
         } 
       }
       temp <- temp/length(f[[1]])
-      job_candidate[index,10] <- job_candidate[index,10] + temp
+      scores[index,4] <- scores[index,4] + temp
     }
-    job_candidate[index,10] <- (job_candidate[index,10])/(length(c$Functions[[1]]))
-    
-    
-    
-    c$Experience.Level <- tolower(c$Experience.Level)
-    
-    #experience level match
-    if(grepl(c$Experience.Level, j$Eligibility, fixed=TRUE) || grepl(c$Experience.Level, j$Audience, fixed=TRUE))
-    {
-      job_candidate[index,11] <- 1
-    }
-    else
-    {
-      job_candidate[index,11] <- 0.5
-    }
-    
-    
-    
-    c$Hard.Skills <- tolower(c$Hard.Skills)
-    c$Hard.Skills <- strsplit(c$Hard.Skills,', ')
-    
-    #hard skills percent match
-    for(h in c$Hard.Skills[[1]])
-    {
-      if(grepl(h, j$jobpost, fixed=TRUE))
-      {
-        job_candidate[index,12] <- job_candidate[index,12] + 1
-      }
-    }
-    if(length(c$Hard.Skills[[1]]) != 0)
-    {
-      job_candidate[index,12] <- (job_candidate[index,12])/length(c$Hard.Skills[[1]])
-    }  
-    
-    
-    
-    c$Soft.Skills <- tolower(c$Soft.Skills)
-    c$Soft.Skills <- strsplit(c$Soft.Skills,', ')
-    
-    #soft skills percent match
-    for(o in c$Soft.Skills[[1]])
-    {
-      if(grepl(o, j$jobpost, fixed=TRUE))
-      {
-        job_candidate[index,13] <- job_candidate[index,13] + 1
-      }
-    }
-    if(length(c$Soft.Skills[[1]]) != 0)
-    {
-      job_candidate[index,13] <- (job_candidate[index,13])/length(c$Soft.Skills[[1]])
-    }
+    scores[index,4] <- (scores[index,4])/(length(c$Functions[[1]]))
     
     
     
     #total match rate
-    avg <- sum(job_candidate[index,1:13])/13
+    scores[index,5] <- sum(scores[index,1:4])/4
     
     
     
-    if(avg >= 0.5)
+    if(scores[index,5] >= 0.25)
     {
-      job_candidate[index,14] <- 1
+      response[index] <- "Yes"
+    }
+    #else if(scores[index,5] < 0.5 && scores[index,5] >= 0.25)
+    #{
+    #  response[index] <- "Maybe"
+    #}
+    else
+    {
+      response[index] <- "No"
     }
     
     

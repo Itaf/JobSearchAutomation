@@ -1,6 +1,8 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
@@ -20,8 +22,14 @@ library(plyr)
 library(class)
 library(tree)
 library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(tidyverse)
 library(e1071)
 library(nnet)
+library(ROSE) #Random Over Sampling Examples
+library(smotefamily)
 ```
 
 
@@ -76,7 +84,7 @@ qplot(Minor.Specialization, data=candidatesData, fill=Gender, main="Minors/Speci
 #Visualize different aspects about candidates according to their age and gender information...
 
 ```{r}
-qplot(Age.Range, Status, data=candidatesData, colour=Gender, main="Employment Status vs. Age Range", xlab="Age Range", ylab="Status") + geom_point(size=3)
+qplot(Age.Range, Status, data=candidatesData, colour=Gender, main="Employment Status vs. Age Range", xlab="Age Range", ylab="Status") + geom_point(size=2)
 ```
 
 ```{r}
@@ -205,31 +213,35 @@ qplot(Employment.Types, data=candidatesData, fill=Experience.Level, main="Employ
 ```
 
 
+#The next 2 chunks are to visualize the soft and hard skills of the candidates...
+```{r}
+summary(candidatesData$Hard.Skills)
+qplot(Hard.Skills, data=candidatesData, fill=Experience.Level, main="Hard Skills Bar Chart", xlab="Top Three Hard Skills", ylab="Candidates") + coord_flip()
+```
+
+```{r}
+summary(candidatesData$Soft.Skills)
+qplot(Soft.Skills, data=candidatesData, fill=Experience.Level, main="Soft Skills Bar Chart", xlab="Top Three Soft Skills", ylab="Candidates") + coord_flip()
+```
+
+
 #Load the processed dataset...
 
 ```{r}
 source("processing.R") #an R script for data processing and feature extraction
-job_candidate <- data.frame(job_candidate)
+job_candidate <- data.frame("Degree Match"=job_candidate[,1], "Major Match"=job_candidate[,2], "Minor Match"=job_candidate[,3], "Need"=job_candidate[,4], "Desperity"=job_candidate[,5], "Availability"=job_candidate[,6], "Eligibility"=job_candidate[,7], "Hard Skills"=job_candidate[,8], "Soft Skills"=job_candidate[,9], "Response"=response)
 summary(job_candidate)
 head(job_candidate)
 str(job_candidate)
+
+qplot(Response, data=job_candidate, xlab="Response", ylab="Count", main="Class Imbalance")
 ```
 
 
-#Prepare the data for training/testing...
+#Davies-Bouldin Index...
 
 ```{r}
-#take 70% of the data for training...
-#training <- job_candidate[1:425622,] 
-
-#leave 30% of the data for testing...
-#testing <- job_candidate[425623:608032,]
-```
-
-
-## Index used to determine optimal number of clusters...
-
-```{r}
+# Index used to determine optimal number of clusters
 Davies.Bouldin <- function(A, SS, m) {
   # A  - the centres of the clusters
   # SS - the within sum of squares
@@ -252,41 +264,263 @@ Davies.Bouldin <- function(A, SS, m) {
 ```
 
 
+##Prepare the data for clustering...
+
+```{r}
+#transform the candidates data into numeric values...
+candidatesDataNumeric <- candidatesData[,2:20]
+
+#candidatesDataNumeric[,1] <- as.numeric(candidatesData[,1]) just timestamps
+candidatesDataNumeric[,1] <- as.numeric(candidatesData[,2])
+candidatesDataNumeric[,2] <- as.numeric(candidatesData[,3])
+candidatesDataNumeric[,3] <- as.numeric(as.factor(tolower(candidatesData[,4])))
+candidatesDataNumeric[,4] <- as.numeric(as.factor(tolower(candidatesData[,5])))
+candidatesDataNumeric[,5] <- as.numeric(as.factor(tolower(candidatesData[,6])))
+candidatesDataNumeric[,6] <- as.numeric(as.factor(tolower(candidatesData[,7])))
+candidatesDataNumeric[,7] <- as.numeric(candidatesData[,8])
+candidatesDataNumeric[,8] <- as.numeric(as.factor(tolower(candidatesData[,9])))
+candidatesDataNumeric[,9] <- as.numeric(as.factor(tolower(candidatesData[,10])))
+candidatesDataNumeric[,10] <- as.numeric(as.factor(tolower(candidatesData[,11])))
+candidatesDataNumeric[,11] <- as.numeric(as.factor(tolower(candidatesData[,12])))
+candidatesDataNumeric[,12] <- as.numeric(as.factor(tolower(candidatesData[,13])))
+candidatesDataNumeric[,13] <- as.numeric(as.factor(tolower(candidatesData[,14])))
+candidatesDataNumeric[,14] <- as.numeric(as.factor(tolower(candidatesData[,15])))
+candidatesDataNumeric[,15] <- as.numeric(as.factor(tolower(candidatesData[,16])))
+candidatesDataNumeric[,16] <- as.numeric(as.factor(tolower(candidatesData[,17])))
+candidatesDataNumeric[,17] <- as.numeric(as.factor(tolower(candidatesData[,18])))
+candidatesDataNumeric[,18] <- as.numeric(as.factor(tolower(candidatesData[,19])))
+candidatesDataNumeric[,19] <- as.numeric(as.factor(tolower(candidatesData[,20])))
+
+#replace NA's with zeros...
+candidatesDataNumeric[is.na(candidatesDataNumeric)] <- 0
+
+#summarize the numerical form of candidates data...
+head(candidatesDataNumeric)
+str(candidatesDataNumeric)
+summary(candidatesDataNumeric)
+```
+
+```{r}
+#transform the jobs data into numeric values...
+jobsDataNumeric <- jobsData[,2:25]
+
+#jobsDataNumeric[,1] <- as.numeric(jobsData[,1]) just job id's
+jobsDataNumeric[,1] <- as.numeric(as.factor(tolower(jobsData[,2])))
+jobsDataNumeric[,2] <- as.numeric(as.factor(tolower(jobsData[,3])))
+jobsDataNumeric[,3] <- as.numeric(as.factor(tolower(jobsData[,4])))
+jobsDataNumeric[,4] <- as.numeric(as.factor(tolower(jobsData[,5])))
+jobsDataNumeric[,5] <- as.numeric(as.factor(tolower(jobsData[,6])))
+jobsDataNumeric[,6] <- as.numeric(as.factor(tolower(jobsData[,7])))
+jobsDataNumeric[,7] <- as.numeric(as.factor(tolower(jobsData[,8])))
+jobsDataNumeric[,8] <- as.numeric(as.factor(tolower(jobsData[,9])))
+jobsDataNumeric[,9] <- as.numeric(as.factor(tolower(jobsData[,10])))
+jobsDataNumeric[,10] <- as.numeric(as.factor(tolower(jobsData[,11])))
+jobsDataNumeric[,11] <- as.numeric(as.factor(tolower(jobsData[,12])))
+jobsDataNumeric[,12] <- as.numeric(as.factor(tolower(jobsData[,13])))
+jobsDataNumeric[,13] <- as.numeric(as.factor(tolower(jobsData[,14])))
+jobsDataNumeric[,14] <- as.numeric(as.factor(tolower(jobsData[,15])))
+jobsDataNumeric[,15] <- as.numeric(as.factor(tolower(jobsData[,16])))
+jobsDataNumeric[,16] <- as.numeric(as.factor(tolower(jobsData[,17])))
+jobsDataNumeric[,17] <- as.numeric(as.factor(tolower(jobsData[,18])))
+jobsDataNumeric[,18] <- as.numeric(as.factor(tolower(jobsData[,19])))
+jobsDataNumeric[,19] <- as.numeric(as.factor(tolower(jobsData[,20])))
+jobsDataNumeric[,20] <- as.numeric(as.factor(tolower(jobsData[,21])))
+jobsDataNumeric[,21] <- as.numeric(as.factor(tolower(jobsData[,22])))
+jobsDataNumeric[,22] <- as.numeric(jobsData[,23])
+jobsDataNumeric[,23] <- as.numeric(jobsData[,24])
+jobsDataNumeric[,24] <- as.numeric(jobsData[,25])
+
+#replace NA's with zeros...
+jobsDataNumeric[is.na(jobsDataNumeric)] <- 0
+
+#summarize the numerical form of jobs data...
+head(jobsDataNumeric)
+str(jobsDataNumeric)
+summary(jobsDataNumeric)
+```
+
+
+#Principal Components Analysis...
+
+```{r}
+pca1 <- princomp(candidatesDataNumeric)
+summary(pca1)
+
+pca2 <- princomp(jobsDataNumeric)
+summary(pca2)
+
+pca3 <- princomp(job_candidate[,1:9]) #col 10 contains labels, which aren't applicable for unsupervised learning
+summary(pca3)
+```
+
+
+##Determine the optimal number of clusters for candidates and jobs data...
+
+```{r}
+# setting up the repetitions and display options...
+N = 25   #Number of repetitions!!!!!!
+max.cluster = 15   # Number of maximum number of desired clusters !!!!
+
+# initializing values
+m.errs1 <- rep(0, max.cluster)
+m.DBI1 <- rep(0, max.cluster)
+m.errs2 <- rep(0, max.cluster)
+m.DBI2 <- rep(0, max.cluster)
+m.errs3 <- rep(0, max.cluster)
+m.DBI3 <- rep(0, max.cluster)
+
+s.errs1 <- rep(0, max.cluster)
+s.DBI1 <- rep(0, max.cluster)
+s.errs2 <- rep(0, max.cluster)
+s.DBI2 <- rep(0, max.cluster)
+s.errs3 <- rep(0, max.cluster)
+s.DBI3 <- rep(0, max.cluster)
+
+# clustering
+for (i in 2:max.cluster) {
+  errs1 <- rep(0, max.cluster)
+  DBI1 <- rep(0, max.cluster)
+  errs2 <- rep(0, max.cluster)
+  DBI2 <- rep(0, max.cluster)
+  errs3 <- rep(0, max.cluster)
+  DBI3 <- rep(0, max.cluster)
+  
+  for (j in 1:N) {
+    # data, number of internal shifts of the cluster centres, number of clusters
+    candidatesKM <- kmeans(candidatesDataNumeric, iter.max = 25, i) 
+    jobsKM <- kmeans(jobsDataNumeric, iter.max = 25, i) 
+    job_candidateKM <- kmeans(job_candidate[,1:9], iter.max = 25, i) 
+
+    errs1[j] <- sum(candidatesKM$withinss)
+    DBI1[j] <- Davies.Bouldin(candidatesKM$centers, candidatesKM$withinss, candidatesKM$size)
+    
+    errs2[j] <- sum(jobsKM$withinss)
+    DBI2[j] <- Davies.Bouldin(jobsKM$centers, jobsKM$withinss, jobsKM$size)
+    
+    errs3[j] <- sum(job_candidateKM$withinss)
+    DBI3[j] <- Davies.Bouldin(job_candidateKM$centers, job_candidateKM$withinss, job_candidateKM$size)
+  }
+  
+  m.errs1[i - 1] = mean(errs1)
+  s.errs1[i - 1] = sd(errs1)
+  m.DBI1[i - 1] = mean(DBI1)
+  s.DBI1[i - 1] = sd(DBI1)
+  
+  m.errs2[i - 1] = mean(errs2)
+  s.errs2[i - 1] = sd(errs2)
+  m.DBI2[i - 1] = mean(DBI2)
+  s.DBI2[i - 1] = sd(DBI2)
+  
+  m.errs3[i - 1] = mean(errs3)
+  s.errs3[i - 1] = sd(errs3)
+  m.DBI3[i - 1] = mean(DBI3)
+  s.DBI3[i - 1] = sd(DBI3)
+  
+  #According to PCA, 8 components are ennough to explain over 95% of candidates and jobs  data...
+  plot(candidatesDataNumeric[,1:8], col=candidatesKM$cluster, pch=candidatesKM$cluster, main=paste(i,"Candidate Clusters - kmeans (euclidean)"))  
+  
+  plot(jobsDataNumeric[,1:8], col=jobsKM$cluster, pch=jobsKM$cluster, main=paste(i,"Job Clusters - kmeans (euclidean)"))  
+  
+  #plot(job_candidate[,1:9], col=job_candidateKM$cluster, pch=job_candidateKM$cluster, main=paste(i,"Job-Candidate Clusters - kmeans (euclidean)"))  
+}
+```
+
+
+##Confidence bands...
+
+```{r}
+### Candidates...
+MSE.errs_up1 = m.errs1 + 1.96 * s.errs1 / sqrt(N)
+MSE.errs_low1 = m.errs1 - 1.96 * s.errs1 / sqrt(N)
+
+MSE.DBI_up1 = m.DBI1 + 1.96 * s.DBI1 / sqrt(N)
+MSE.DBI_low1 = m.DBI1 - 1.96 * s.DBI1 / sqrt(N)
+
+
+plot(2:(max.cluster+1), m.errs1, main = "Candidates SS")
+lines(2:(max.cluster+1), m.errs1)
+par(col = "red")
+lines(2:(max.cluster+1), MSE.errs_up1)
+lines(2:(max.cluster+1), MSE.errs_low1)
+par(col = "black")
+
+plot(2:(max.cluster+1), m.DBI1, main = "Candidates Davies-Bouldin")
+lines(2:(max.cluster+1), m.DBI1)
+par(col="red")
+lines(2:(max.cluster+1), MSE.DBI_up1)
+lines(2:(max.cluster+1), MSE.DBI_low1)
+par(col = "black")
+
+
+### Jobs...
+MSE.errs_up2 = m.errs2 + 1.96 * s.errs2 / sqrt(N)
+MSE.errs_low2 = m.errs2 - 1.96 * s.errs2 / sqrt(N)
+
+MSE.DBI_up2 = m.DBI2 + 1.96 * s.DBI2 / sqrt(N)
+MSE.DBI_low2 = m.DBI2 - 1.96 * s.DBI2 / sqrt(N)
+
+
+plot(2:(max.cluster+1), m.errs2, main = "Jobs SS")
+lines(2:(max.cluster+1), m.errs2)
+par(col = "red")
+lines(2:(max.cluster+1), MSE.errs_up2)
+lines(2:(max.cluster+1), MSE.errs_low2)
+par(col = "black")
+
+plot(2:(max.cluster+1), m.DBI2, main = "Jobs Davies-Bouldin")
+lines(2:(max.cluster+1), m.DBI2)
+par(col="red")
+lines(2:(max.cluster+1), MSE.DBI_up2)
+lines(2:(max.cluster+1), MSE.DBI_low2)
+par(col = "black")
+
+### Job-Candiadate Pairs...
+MSE.errs_up3 = m.errs3 + 1.96 * s.errs3 / sqrt(N)
+MSE.errs_low3 = m.errs3 - 1.96 * s.errs3 / sqrt(N)
+
+MSE.DBI_up3 = m.DBI3 + 1.96 * s.DBI3 / sqrt(N)
+MSE.DBI_low3 = m.DBI3 - 1.96 * s.DBI3 / sqrt(N)
+
+
+plot(2:(max.cluster+1), m.errs3, main = "Job-Candidate SS")
+lines(2:(max.cluster+1), m.errs3)
+par(col = "red")
+lines(2:(max.cluster+1), MSE.errs_up3)
+lines(2:(max.cluster+1), MSE.errs_low3)
+par(col = "black")
+
+plot(2:(max.cluster+1), m.DBI3, main = "Job-Candidate Davies-Bouldin")
+lines(2:(max.cluster+1), m.DBI3)
+par(col="red")
+lines(2:(max.cluster+1), MSE.DBI_up3)
+lines(2:(max.cluster+1), MSE.DBI_low3)
+par(col = "black")
+```
+
+
+###Optimal Number of Clusters...
+
+```{r}
+## pick optimal number of clusters for candidates, jobs, and job-candidate pairs, respectively...
+(i_choice1 <- which(m.DBI1==max(m.DBI1[1:(length(m.DBI1)-1)]))+1)
+(i_choice2 <- which(m.DBI2==max(m.DBI2[1:(length(m.DBI2)-1)]))+1)
+(i_choice3 <- which(m.DBI3==max(m.DBI3[1:(length(m.DBI3)-1)]))+1)
+```
+
+
 #Unsupervised Machine Learning...
 
 ##K-means Clustering:-
 
 ###Candidates Data:
 ```{r}
-#transform the data into numeric values...
-candidatesDataNumeric <- candidatesData
-candidatesDataNumeric[,1] <- as.numeric(candidatesDataNumeric[,1])
-candidatesDataNumeric[,2] <- as.numeric(candidatesDataNumeric[,2])
-candidatesDataNumeric[,3] <- as.numeric(candidatesDataNumeric[,3])
-candidatesDataNumeric[,4] <- as.numeric(candidatesDataNumeric[,4])
-candidatesDataNumeric[,5] <- as.numeric(candidatesDataNumeric[,5])
-candidatesDataNumeric[,6] <- as.numeric(candidatesDataNumeric[,6])
-candidatesDataNumeric[,7] <- as.numeric(candidatesDataNumeric[,7])
-candidatesDataNumeric[,8] <- as.numeric(candidatesDataNumeric[,8])
-candidatesDataNumeric[,9] <- as.numeric(candidatesDataNumeric[,9])
-candidatesDataNumeric[,10] <- as.numeric(candidatesDataNumeric[,10])
-candidatesDataNumeric[,11] <- as.numeric(candidatesDataNumeric[,11])
-candidatesDataNumeric[,12] <- as.numeric(candidatesDataNumeric[,12])
-candidatesDataNumeric[,13] <- as.numeric(candidatesDataNumeric[,13])
-candidatesDataNumeric[,14] <- as.numeric(candidatesDataNumeric[,14])
-candidatesDataNumeric[,15] <- as.numeric(candidatesDataNumeric[,15])
-candidatesDataNumeric[,16] <- as.numeric(candidatesDataNumeric[,16])
-candidatesDataNumeric[,17] <- as.numeric(candidatesDataNumeric[,17])
-candidatesDataNumeric[,18] <- as.numeric(candidatesDataNumeric[,18])
-candidatesDataNumeric[,19] <- as.numeric(candidatesDataNumeric[,19])
-candidatesDataNumeric[,20] <- as.numeric(candidatesDataNumeric[,20])
+cl.candidates.fit <- kmeans(candidatesDataNumeric, iter.max = 10, i_choice1)
 
-cl.candidates.fit <- kmeans(candidatesDataNumeric, 2)
 #get cluster means 
 aggregate(candidatesDataNumeric, by=list(cl.candidates.fit$cluster), FUN=mean)
 
 #append cluster assignment
-results <- data.frame(candidatesDataNumeric, cl.candidates.fit$cluster)
+cl.candidates.results <- data.frame(candidatesDataNumeric, "Cluster"=cl.candidates.fit$cluster)
 
 a <- tapply(candidatesDataNumeric$Hard.Skills, cl.candidates.fit$cluster, mean)
 b <- tapply(candidatesDataNumeric$Soft.Skills, cl.candidates.fit$cluster, mean)
@@ -297,56 +531,27 @@ ggplot(cbind(candidatesDataNumeric, cluster=factor(cl.candidates.fit$cluster))) 
    theme_bw()
 
 #Visualize the clustering results...
-
 #Cluster Plot against 1st 2 Principal Components
 clusplot(candidatesDataNumeric, cl.candidates.fit$cluster)
 
 #Centroid Plot against 1st 2 Discriminant Functions
 plotcluster(candidatesDataNumeric, cl.candidates.fit$cluster)
+
+#According to PCA, 8 components are ennough to explain over 95% of candidates data...
+plot(candidatesDataNumeric[,1:8], col=cl.candidates.fit$cluster, pch=cl.candidates.fit$cluster, main=paste(i_choice1,"Candidate Clusters - kmeans (euclidean)"))  
 ```
 
 
 ###Jobs Data:
 ```{r}
-#transform the data into numeric values...
-jobsDataNumeric <- jobsData
-jobsDataNumeric[,1] <- as.numeric(jobsDataNumeric[,1])
-jobsDataNumeric[,2] <- as.numeric(jobsDataNumeric[,2])
-jobsDataNumeric[,3] <- as.numeric(jobsDataNumeric[,3])
-jobsDataNumeric[,4] <- as.numeric(jobsDataNumeric[,4])
-jobsDataNumeric[,5] <- as.numeric(jobsDataNumeric[,5])
-jobsDataNumeric[,6] <- as.numeric(jobsDataNumeric[,6])
-jobsDataNumeric[,7] <- as.numeric(jobsDataNumeric[,7])
-jobsDataNumeric[,8] <- as.numeric(jobsDataNumeric[,8])
-jobsDataNumeric[,9] <- as.numeric(jobsDataNumeric[,9])
-jobsDataNumeric[,10] <- as.numeric(jobsDataNumeric[,10])
-jobsDataNumeric[,11] <- as.numeric(jobsDataNumeric[,11])
-jobsDataNumeric[,12] <- as.numeric(jobsDataNumeric[,12])
-jobsDataNumeric[,13] <- as.numeric(jobsDataNumeric[,13])
-jobsDataNumeric[,14] <- as.numeric(jobsDataNumeric[,14])
-jobsDataNumeric[,15] <- as.numeric(jobsDataNumeric[,15])
-jobsDataNumeric[,16] <- as.numeric(jobsDataNumeric[,16])
-jobsDataNumeric[,17] <- as.numeric(jobsDataNumeric[,17])
-jobsDataNumeric[,18] <- as.numeric(jobsDataNumeric[,18])
-jobsDataNumeric[,19] <- as.numeric(jobsDataNumeric[,19])
-jobsDataNumeric[,20] <- as.numeric(jobsDataNumeric[,20])
-jobsDataNumeric[,21] <- as.numeric(jobsDataNumeric[,21])
-jobsDataNumeric[,22] <- as.numeric(jobsDataNumeric[,22])
-jobsDataNumeric[,23] <- as.numeric(jobsDataNumeric[,23])
-jobsDataNumeric[,24] <- as.numeric(jobsDataNumeric[,24])
-jobsDataNumeric[,25] <- as.numeric(jobsDataNumeric[,25])
-
-#replace NA's with zeros...
-jobsDataNumeric[is.na(jobsDataNumeric)] <- 0
-
 #perform k-means clustering...
-cl.jobs.fit <- kmeans(jobsDataNumeric, 5, iter.max = 10)
+cl.jobs.fit <- kmeans(jobsDataNumeric, iter.max = 10, i_choice2)
 
 #get cluster means 
 aggregate(jobsDataNumeric, by=list(cl.jobs.fit$cluster), FUN=mean)
 
 #append cluster assignment
-results <- data.frame(jobsDataNumeric, cl.jobs.fit$cluster)
+cl.jobs.results <- data.frame(jobsDataNumeric, "Cluster"=cl.jobs.fit$cluster)
 
 a <- tapply(jobsDataNumeric$RequiredQual, cl.jobs.fit$cluster, mean)
 b <- tapply(jobsDataNumeric$Eligibility, cl.jobs.fit$cluster, mean)
@@ -363,64 +568,77 @@ clusplot(jobsDataNumeric, cl.jobs.fit$cluster)
 
 #Centroid Plot against 1st 2 Discriminant Functions
 plotcluster(jobsDataNumeric, cl.jobs.fit$cluster)
+
+#According to PCA, 8 components are ennough to explain over 95% of jobs data...
+plot(jobsDataNumeric[,1:8], col=cl.jobs.fit$cluster, pch=cl.jobs.fit$cluster, main=paste(i_choice2,"Job Clusters - kmeans (euclidean)"))  
 ```
 
 
 ###Job-Candidate Data:
 ```{r}
 #perform K-means clustering analysis
-cl.fit1 <- kmeans(job_candidate[,1:13], 3)
+cl.fit1 <- kmeans(job_candidate[,1:9], iter.max = 10, i_choice3)
 
 #get cluster means 
-aggregate(job_candidate[,1:13], by=list(cl.fit1$cluster), FUN=mean)
+aggregate(job_candidate[,1:9], by=list(cl.fit1$cluster), FUN=mean)
 
 #append cluster assignment
-results1 <- data.frame(job_candidate[,1:13], cl.fit1$cluster)
+cl.results <- data.frame(job_candidate[,1:9], "Cluster"=cl.fit1$cluster)
 
-a <- tapply(job_candidate$X12, cl.fit1$cluster, mean)
-b <- tapply(job_candidate$X13, cl.fit1$cluster, mean)
+a <- tapply(job_candidate$Hard.Skills, cl.fit1$cluster, mean)
+b <- tapply(job_candidate$Soft.Skills, cl.fit1$cluster, mean)
+
 kcenters <- data.frame(a,b)
-ggplot(cbind(job_candidate[,1:13], cluster=factor(cl.fit1$cluster)), xlab="Hard Skills Match", ylab="Soft Skills Match") +
-   geom_point(aes(X12, X13, col=cluster), size=2) +
+ggplot(cbind(job_candidate[,1:9], cluster=factor(cl.fit1$cluster))) +
+   geom_point(aes(Hard.Skills, Soft.Skills, col=cluster), size=2) +
    geom_point(data=cbind(kcenters, cluster=factor(1:nrow(kcenters))), aes(a,b), pch=8, size=10) + 
    theme_bw()
 
 #Visualize the clustering results...
 
 #Cluster Plot against 1st 2 Principal Components
-clusplot(job_candidate[,1:13], cl.fit1$cluster)
+clusplot(job_candidate[,1:9], cl.fit1$cluster)
 
 #Centroid Plot against 1st 2 Discriminant Functions
-plotcluster(job_candidate[,1:13], cl.fit1$cluster)
+plotcluster(job_candidate[,1:9], cl.fit1$cluster)
+
+#Plot pairs of features...
+plot(job_candidate[1:5000,1:9], col=cl.fit1$cluster[1:5000], pch=cl.fit1$cluster[1:5000], main=paste(i_choice3,"Job-Candidate Clusters - kmeans (euclidean)"))  
+
 ```
 
 
 ##Hierarchical Clustering:-
 ```{r}
-cl.fit2 <- hclust(dist(job_candidate[1:10000,1:13][c("X1","X2","X3","X4","X5","X6","X7","X8","X9","X10","X11","X12","X13")]), method="complete")
-plot(cl.fit2, xlab="", main="Complete linkage", sub="")
+cl.fit2 <- hclust(dist(job_candidate[1:5000,1:9]), method="complete")
+plot(cl.fit2, xlab="", main="Complete Linkage", sub="")
 ```
 
 ```{r}
-classification <- cutree(cl.fit2, k=2)
-results2 <- data.frame(job_candidate[1:10000,1:13], factor(classification))
-qplot(X12, X13,  data=mutate(job_candidate[1:10000,1:13], classification=factor(classification)), color=factor(classification))
+classification <- cutree(cl.fit2, k=i_choice3)
+results2 <- data.frame(job_candidate[1:5000,1:9], factor(classification))
+qplot(Hard.Skills, Soft.Skills, data=mutate(job_candidate[1:5000,1:9], classification=factor(classification)), color=factor(classification)) + geom_point(size=2)
 ```
 
 
+#Prepare the data for training/testing...
 
 ```{r}
-#leave 30% of dataset for testing...
-test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.7,0.3))
+#take 80% of the data for training, and leave 20% for testing...
+#test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.9,0.1)) 
+#test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.8,0.2)) 
+#test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.75,0.25)) 
+#test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.7,0.3)) 
+test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.6,0.4)) 
 train <- !test
 ```
 
 
-#Supervised Machine Learning...
+#Supervised Machine Learning with Imbalanced Classes...
 
 ##Linear Regression:-
 ```{r}
-lr.fit <- glm(X14 ~ ., data=job_candidate, family=binomial, subset=train)
+lr.fit <- glm(Response ~ ., data=subset(job_candidate, train), family=binomial)
 summary(lr.fit)
 
 #model's response consists of probabilities...
@@ -428,18 +646,18 @@ lr.prob <- predict(lr.fit, type="response", data=subset(job_candidate, train))
 lr.prob[1:5]
 
 #convert the probabilities to predicted values...
-lr.pred <- cut(lr.prob, breaks=c(0,0.5,1), labels=c("0", "1"), include.lowest=TRUE)
+lr.pred <- cut(lr.prob, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
 lr.pred[1:5]
 
 #construct the confusion matrix...
-lr.cm <- table(Actual=job_candidate$X14[train], Predicted=lr.pred)
+lr.cm <- table(Actual=job_candidate$Response[train], Predicted=lr.pred)
 lr.cm
 
 #calculate prediction accuracy, sensitivity (recall), specificity, and precision...
 sum(diag(lr.cm)) / sum(lr.cm)
-lr.cm["1", "1"] / sum(lr.cm["1", ])
-lr.cm["0", "0"] / sum(lr.cm["0", ])
-lr.cm["1", "1"] / sum(lr.cm[, "1"])
+lr.cm["Yes", "Yes"] / sum(lr.cm["Yes", ])
+lr.cm["No", "No"] / sum(lr.cm["No", ])
+lr.cm["Yes", "Yes"] / sum(lr.cm[, "Yes"])
 ```
 
 
@@ -448,17 +666,17 @@ lr.cm["1", "1"] / sum(lr.cm[, "1"])
 test.prob <- predict(lr.fit, type="response", newdata=subset(job_candidate, test))
 
 #convert the probabilities to predicted values...
-test.pred <- cut(test.prob, breaks=c(0,0.5,1), labels=c("0", "1"), include.lowest=TRUE)
+test.pred <- cut(test.prob, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
 
 #construct the confusion matrix...
-test.cm <- table(Actual=job_candidate$X14[test], Predicted=test.pred)
+test.cm <- table(Actual=job_candidate$Response[test], Predicted=test.pred)
 test.cm
 
 #calculate prediction accuracy, sensitivity (recall), specificity, and precision...
 sum(diag(test.cm)) / sum(test.cm) 
-test.cm["1", "1"] / sum(test.cm["1", ])
-test.cm["0", "0"] / sum(test.cm["0", ])
-test.cm["1", "1"] / sum(test.cm[, "1"])
+test.cm["Yes", "Yes"] / sum(test.cm["Yes", ])
+test.cm["No", "No"] / sum(test.cm["No", ])
+test.cm["Yes", "Yes"] / sum(test.cm[, "Yes"])
 ```
 
 
@@ -478,65 +696,658 @@ roc.plot <- function(Actual, Prob)
         geom_abline(intercept=0, slope=1) + theme_bw()
 }
 
-roc.plot(job_candidate$X14[test], test.prob)
+roc.plot(job_candidate$Response[test], test.prob)
 ```
 
 
 ##K-Nearest Neighbours:-
 ```{r}
-knn.train.fit <- model.matrix(X14 ~ ., data=subset(job_candidate,train))
-knn.test.fit <- model.matrix(X14 ~ ., data=subset(job_candidate,test))
-knn.train.res <- job_candidate$X14[train]
-knn.test.res <- knn(knn.train.fit, knn.test.fit, knn.train.res, k=10)
-table(Actual=job_candidate$X14[test], Predicted=knn.test.res)
+#knn.train.fit <- model.matrix(Response ~ ., data=subset(job_candidate,train))
+#knn.test.fit <- model.matrix(Response ~ ., data=subset(job_candidate,test))
+
+#knn.train.res <- job_candidate$Response[train]
+#knn.test.res <- knn(knn.train.fit, knn.test.fit, knn.train.res, k=5)
+
+#knn.cm <- table(Actual=job_candidate$Response[test], Predicted=knn.test.res)
+#knn.cm
+```
+
+
+#A function that generates probabilistic predictions from the probabilities given by a decision tree...
+```{r}
+generateProbPred <- function(prob)
+{
+  random <- runif(nrow(subset(job_candidate, test))) 
+  real <- job_candidate$Response[test]
+  pred <- cbind(prob, random, real)
+
+  pred.t <- as_tibble(pred)
+  print(pred.t, n=nrow(subset(job_candidate, test)))
+
+  pred.t <- mutate(pred.t, predicted = case_when(random < No ~ 1, random >= No & random <= No + Yes ~ 2))
+  
+  return(prob.t)
+}
 ```
 
 
 ##Decision Tree:-
 ```{r}
-tree.fit <- rpart(X14 ~ ., data=subset(job_candidate, train), method="class")
+tree.fit <- rpart(Response ~ ., data=subset(job_candidate, train), model="TRUE")
 tree.fit
 
 #Visualize the results of the decision tree...
 plot(tree.fit) #plot decision tree
 text(tree.fit, cex=0.7) #label the decision tree plot
+summary(tree.fit)
+
+prp(tree.fit) #basic plot
+fancyRpartPlot(tree.fit, main="Classification Tree for job_candidate Data") # fancier plot
 
 post(tree.fit,file="C:/Users/ITAFO/Documents/DATA 5000/Project/Data/decisionTree.ps") #create postscript plot of decision tree
 
 plotcp(tree.fit) #plot cross-validation results
 printcp(tree.fit) #display cp table
 
-rsq.rpart(tree.fit) #plot approximate R-squared and relative error for different splits (2 plots)
+#rsq.rpart(tree.fit) #plot approximate R-squared and relative error for different splits (2 plots)
 
-#Predict responses for test data...
-tree.pred <- predict(tree.fit, newdata=subset(job_candidate, test), type="class")
-tree.cm <- table(Actual=job_candidate$X14[test], Predicted=tree.pred)
-tree.cm
+#Predict responses for test data based on classification...
+tree.class.pred <- predict(tree.fit, newdata=subset(job_candidate, test), type="class")
+
+tree.class.cm <- table(Actual=job_candidate$Response[test], Predicted=tree.class.pred)
+tree.class.cm
 
 #Calculate classification performance metrics...
-sum(diag(tree.cm)) / sum(tree.cm)       #accuracy
-tree.cm["1", "1"] / sum(tree.cm["1", ]) #sensitivity (recall)
-tree.cm["0", "0"] / sum(tree.cm["0", ]) #specificity
-tree.cm["1", "1"] / sum(tree.cm[, "1"]) #precision
+sum(diag(tree.class.cm)) / sum(tree.class.cm)       #accuracy
+tree.class.cm["Yes", "Yes"] / sum(tree.class.cm["Yes", ]) #sensitivity (recall)
+tree.class.cm["No", "No"] / sum(tree.class.cm["No", ]) #specificity
+tree.class.cm["Yes", "Yes"] / sum(tree.class.cm[, "Yes"]) #precision
+
+#Predict responses for test data based on probabilities...
+tree.prob.pred <- predict(tree.fit, newdata=subset(job_candidate, test), type="prob")
+tree.prob.pred.t <- generateProbPred(tree.prob.pred)
+
+#results...
+tree.prob.pred.t %>%
+print(n=Inf)
+
+
+#plot a scatter plot of prediction probabilities...
+qplot(No, Yes, data=tree.prob.pred.t, xlab="'No' Probability", ylab="'Yes' Probability", main="Prediction Probabilities")
+
+tree.prob.cm <- table(Actual=tree.prob.pred.t$real, Predicted=tree.prob.pred.t$predicted)
+tree.prob.cm
+
+#Calculate classification performance metrics...
+sum(diag(tree.prob.cm)) / sum(tree.prob.cm)       #accuracy
+tree.prob.cm["2", "2"] / sum(tree.prob.cm["2", ]) #sensitivity (recall)
+tree.prob.cm["1", "1"] / sum(tree.prob.cm["1", ]) #specificity
+tree.prob.cm["2", "2"] / sum(tree.prob.cm[, "2"]) #precision
 ```
 
 
 ##Naive Bayes:-
 ```{r}
-nb.fit <- naiveBayes(X14 ~ ., data=job_candidate, subset=train)
+nb.fit <- naiveBayes(Response ~ ., data=subset(job_candidate, train))
+summary(nb.fit)
+
 nb.pred <- predict(nb.fit, newdata=subset(job_candidate, test), type="class") 
-table(Actual=job_candidate$X14[test], Predicted=nb.pred)
+
+nb.cm <- table(Actual=job_candidate$Response[test], Predicted=nb.pred)
+nb.cm
+
+#Calculate classification performance metrics...
+sum(diag(nb.cm)) / sum(nb.cm)       #accuracy
+nb.cm["Yes", "Yes"] / sum(nb.cm["Yes", ]) #sensitivity (recall)
+nb.cm["No", "No"] / sum(nb.cm["No", ]) #specificity
+nb.cm["Yes", "Yes"] / sum(nb.cm[, "Yes"]) #precision
 ```
 
 
 ##Neural Network:-
 ```{r}
-nnet.fit <- nnet(X14 ~ ., data=job_candidate, subset=train, size=5)
+nnet.fit <- nnet(Response ~ ., data=subset(job_candidate, train), size=5)
 summary(nnet.fit)
 
 nnet.pred <- predict(nnet.fit, newdata=subset(job_candidate, test), type="class")
-table(Actual=job_candidate$X14[test], Predicted=nnet.pred)
+
+nnet.cm <- table(Actual=job_candidate$Response[test], Predicted=nnet.pred)
+nnet.cm
+
+#Calculate classification performance metrics...
+sum(diag(nnet.cm)) / sum(nnet.cm)       #accuracy
+nnet.cm["Yes", "Yes"] / sum(nnet.cm["Yes", ]) #sensitivity (recall)
+nnet.cm["No", "No"] / sum(nnet.cm["No", ]) #specificity
+nnet.cm["Yes", "Yes"] / sum(nnet.cm[, "Yes"]) #precision
 ```
+
+
+##Support Vector Machine (SVM):-
+```{r}
+#svm.fit <- svm(Response ~ ., data=subset(job_candidate, train), kernel="linear", cost = 10, scale = FALSE) 
+#summary(svm.fit)
+#plot(svm.fit)
+
+#svm.pred <- predict(svm.fit, newdata=subset(job_candidate, test), type="class")
+
+#svm.cm <- table(Actual=job_candidate$Response[test], Predicted=svm.pred)
+#svm.cm
+
+#Calculate classification performance metrics...
+#sum(diag(svm.cm)) / sum(svm.cm)       #accuracy
+#svm.cm["Yes", "Yes"] / sum(svm.cm["Yes", ]) #sensitivity (recall)
+#svm.cm["No", "No"] / sum(svm.cm["No", ]) #specificity
+#svm.cm["Yes", "Yes"] / sum(svm.cm[, "Yes"]) #precision
+```
+
+
+##Ensemble Classification:-
+
+###A function to get the final decision for each sample of the testing data based on the mostly predicted class among an ensemble of 5 classifiers, where a 5th classifier is not necessary...
+```{r}
+ensemble <- function(t1, t2, t3, t4, t5) 
+{
+  counter <- 1
+  a <- t1
+  
+  while(counter < length(a))
+  {
+    no <- 0
+    yes <- 0
+    
+    #check Yes's
+    if(t1[counter] == "Yes")
+    {
+      yes = yes + 1
+    }
+    if(t2[counter] == "Yes")
+    {
+      yes = yes + 1
+    }
+    if(t3[counter] == "Yes")
+    {
+      yes = yes + 1
+    }
+    if(t4[counter] == "Yes")
+    {
+      yes = yes + 1
+    }
+    if(!is.null(t5))
+    {
+      if(t5[counter] == "Yes")
+      {
+        yes = yes + 1
+      }
+    }
+    
+    #check No's
+    if(t1[counter] == "No")
+    {
+      no = no + 1
+    }
+    if(t2[counter] == "No")
+    {
+      no = no + 1
+    }
+    if(t3[counter] == "No")
+    {
+      no = no + 1
+    }
+    if(t4[counter] == "No")
+    {
+      no = no + 1
+    }
+    if(!is.null(t5))
+    {
+      if(t5[counter] == "No")
+      {
+        no = no + 1
+      }
+    }
+    
+    #decide based on the maximum count of yes's and no's
+    if(no >= yes)
+    {
+      a[counter] = "No"
+    }
+    else
+    {
+      a[counter] = "Yes"
+    }
+    
+    counter <- counter + 1
+  }
+
+  return(a)
+}
+```
+
+
+###Apply an Ensemble of the above Classifiers...
+```{r}
+ensemble.pred <- ensemble(test.pred, tree.class.pred, tree.prob.pred.t$predicted, nb.pred, nnet.pred)
+
+ensemble.cm <- table(Actual=job_candidate$Response[test], Predicted=ensemble.pred)
+ensemble.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(ensemble.cm)) / sum(ensemble.cm) 
+ensemble.cm["Yes", "Yes"] / sum(ensemble.cm["Yes", ])
+ensemble.cm["No", "No"] / sum(ensemble.cm["No", ])
+ensemble.cm["Yes", "Yes"] / sum(ensemble.cm[, "Yes"])
+```
+
+
+##Class Imbalance:-
+
+```{r}
+#visualize responses in training and testing data...
+qplot(Response, data=subset(job_candidate, train), xlab="Response", ylab="Count", main="Class Imbalance in Training Data")
+
+#oversample the minority class...
+training.rose <- ROSE(Response ~ ., data=subset(job_candidate,train))$data
+
+table(training.rose$Response)
+
+#after balancing, visualize responses in training and testing data...
+qplot(Response, data=training.rose, xlab="Response", ylab="Count", main="Class Balance in Training Data")
+```
+
+
+#Supervised Machine Learning with Balanced Classes...
+
+##Linear Regression:-
+```{r}
+lr.balanced.fit <- glm(Response ~ ., data=training.rose, family=binomial)
+summary(lr.balanced.fit)
+
+#model's response consists of probabilities...
+lr.balanced.prob <- predict(lr.balanced.fit, type="response", data=training.rose)
+lr.balanced.prob[1:5]
+
+#convert the probabilities to predicted values...
+lr.balanced.pred <- cut(lr.balanced.prob, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+lr.balanced.pred[1:5]
+
+#construct the confusion matrix...
+lr.balanced.cm <- table(Actual=training.rose$Response, Predicted=lr.balanced.pred)
+lr.balanced.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(lr.balanced.cm)) / sum(lr.balanced.cm)
+lr.balanced.cm["Yes", "Yes"] / sum(lr.balanced.cm["Yes", ])
+lr.balanced.cm["No", "No"] / sum(lr.balanced.cm["No", ])
+lr.balanced.cm["Yes", "Yes"] / sum(lr.balanced.cm[, "Yes"])
+```
+
+
+```{r}
+#model's response consists of probabilities...
+test.balanced.prob <- predict(lr.balanced.fit, type="response", newdata=subset(job_candidate, test))
+
+#convert the probabilities to predicted values...
+test.balanced.pred <- cut(test.balanced.prob, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+#construct the confusion matrix...
+test.balanced.cm <- table(Actual=job_candidate$Response[test], Predicted=test.balanced.pred)
+test.balanced.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(test.balanced.cm)) / sum(test.balanced.cm) 
+test.balanced.cm["Yes", "Yes"] / sum(test.balanced.cm["Yes", ])
+test.balanced.cm["No", "No"] / sum(test.balanced.cm["No", ])
+test.balanced.cm["Yes", "Yes"] / sum(test.balanced.cm[, "Yes"])
+```
+
+
+```{r}
+roc.plot(job_candidate$Response[test], test.balanced.prob)
+```
+
+
+##Decision Tree:-
+```{r}
+tree.balanced.fit <- rpart(Response ~ ., data=training.rose, model="TRUE")
+tree.balanced.fit
+
+#Visualize the results of the decision tree...
+plot(tree.balanced.fit) #plot decision tree
+text(tree.balanced.fit, cex=0.7) #label the decision tree plot
+summary(tree.balanced.fit)
+
+prp(tree.balanced.fit) #basic plot
+fancyRpartPlot(tree.balanced.fit, main="Classification Tree for job_candidate Data") # fancier plot
+
+post(tree.balanced.fit,file="C:/Users/ITAFO/Documents/DATA 5000/Project/Data/decisionTree(balanced).ps") #create postscript plot of decision tree
+
+plotcp(tree.balanced.fit) #plot cross-validation results
+printcp(tree.balanced.fit) #display cp table
+
+#rsq.rpart(tree.fit) #plot approximate R-squared and relative error for different splits (2 plots)
+
+#Predict responses for test data based on classification...
+tree.balanced.class.pred <- predict(tree.balanced.fit, newdata=subset(job_candidate, test), type="class")
+
+tree.balanced.class.cm <- table(Actual=job_candidate$Response[test], Predicted=tree.balanced.class.pred)
+tree.balanced.class.cm
+
+#Calculate classification performance metrics...
+sum(diag(tree.balanced.class.cm)) / sum(tree.balanced.class.cm)       #accuracy
+tree.balanced.class.cm["Yes", "Yes"] / sum(tree.balanced.class.cm["Yes", ]) #sensitivity (recall)
+tree.balanced.class.cm["No", "No"] / sum(tree.balanced.class.cm["No", ]) #specificity
+tree.balanced.class.cm["Yes", "Yes"] / sum(tree.balanced.class.cm[, "Yes"]) #precision
+
+#Predict responses for test data based on probabilities...
+tree.balanced.prob.pred <- predict(tree.balanced.fit, newdata=subset(job_candidate, test), type="prob")
+tree.balanced.prob.pred.t <- generateProbPred(tree.balanced.prob.pred)
+
+#results...
+tree.balanced.prob.pred.t %>%
+print(n=Inf)
+
+
+#plot a scatter plot of prediction probabilities...
+qplot(No, Yes, data=tree.balanced.prob.pred.t, xlab="'No' Probability", ylab="'Yes' Probability", main="Prediction Probabilities")
+
+tree.balanced.prob.cm <- table(Actual=tree.balanced.prob.pred.t$real.balanced, Predicted=tree.balanced.prob.pred.t$predicted.balanced)
+tree.balanced.prob.cm
+
+#Calculate classification performance metrics...
+sum(diag(tree.balanced.prob.cm)) / sum(tree.balanced.prob.cm)       #accuracy
+tree.balanced.prob.cm["2", "2"] / sum(tree.balanced.prob.cm["2", ]) #sensitivity (recall)
+tree.balanced.prob.cm["1", "1"] / sum(tree.balanced.prob.cm["1", ]) #specificity
+tree.balanced.prob.cm["2", "2"] / sum(tree.balanced.prob.cm[, "2"]) #precision
+```
+
+
+##Naive Bayes:-
+```{r}
+nb.balanced.fit <- naiveBayes(Response ~ ., data=training.rose)
+summary(nb.balanced.fit)
+
+nb.balanced.pred <- predict(nb.balanced.fit, newdata=subset(job_candidate, test), type="class") 
+
+nb.balanced.cm <- table(Actual=job_candidate$Response[test], Predicted=nb.balanced.pred)
+nb.balanced.cm
+
+#Calculate classification performance metrics...
+sum(diag(nb.balanced.cm)) / sum(nb.balanced.cm)       #accuracy
+nb.balanced.cm["Yes", "Yes"] / sum(nb.balanced.cm["Yes", ]) #sensitivity (recall)
+nb.balanced.cm["No", "No"] / sum(nb.balanced.cm["No", ]) #specificity
+nb.balanced.cm["Yes", "Yes"] / sum(nb.balanced.cm[, "Yes"]) #precision
+```
+
+
+##Neural Network:-
+```{r}
+nnet.balanced.fit <- nnet(Response ~ ., data=training.rose, size=5)
+summary(nnet.balanced.fit)
+
+nnet.balanced.pred <- predict(nnet.balanced.fit, newdata=subset(job_candidate, test), type="class")
+
+nnet.balanced.cm <- table(Actual=job_candidate$Response[test], Predicted=nnet.balanced.pred)
+nnet.balanced.cm
+
+#Calculate classification performance metrics...
+sum(diag(nnet.balanced.cm)) / sum(nnet.balanced.cm)       #accuracy
+nnet.balanced.cm["Yes", "Yes"] / sum(nnet.balanced.cm["Yes", ]) #sensitivity (recall)
+nnet.balanced.cm["No", "No"] / sum(nnet.balanced.cm["No", ]) #specificity
+nnet.balanced.cm["Yes", "Yes"] / sum(nnet.balanced.cm[, "Yes"]) #precision
+```
+
+
+##Ensemble Classification:-
+
+```{r}
+ensemble.rose.pred <- ensemble(test.balanced.pred, tree.balanced.class.pred, tree.balanced.prob.pred.t$predicted.balanced, nb.balanced.pred, nnet.balanced.pred)
+
+ensemble.rose.cm <- table(Actual=job_candidate$Response[test], Predicted=ensemble.rose.pred)
+ensemble.rose.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(ensemble.rose.cm)) / sum(ensemble.rose.cm) 
+ensemble.rose.cm["Yes", "Yes"] / sum(ensemble.rose.cm["Yes", ])
+ensemble.rose.cm["No", "No"] / sum(ensemble.rose.cm["No", ])
+ensemble.rose.cm["Yes", "Yes"] / sum(ensemble.rose.cm[, "Yes"])
+```
+
+
+###Prepare 4 training sets from the original set...
+```{r}
+temp <- subset(job_candidate, train)
+is.Yes <- temp["Response"]=="Yes"
+is.No <- temp["Response"]=="No"
+
+table(is.No)
+table(is.Yes)
+
+index <- nrow(subset(temp,is.No)) #get the maximum possible index within the list of "No" cases
+ratio <- nrow(subset(temp,is.Yes))/nrow(subset(temp,is.No)) #get ratio of "Yes" cases vs. "No" cases
+
+train1 <- subset(temp,is.No)[1:(index*ratio),]
+train2 <- subset(temp,is.No)[((index*ratio)+1):(2*index*ratio),]
+train3 <- subset(temp,is.No)[((2*index*ratio)+1):(3*index*ratio),]
+train4 <- subset(temp,is.No)[((3*index*ratio)+1):(4*index*ratio),]
+train5 <- subset(temp,is.No)[((4*index*ratio)+1):index,] #the remaining 
+
+train1 <- rbind(train1, subset(temp, is.Yes))
+train2 <- rbind(train2, subset(temp, is.Yes))
+train3 <- rbind(train3, subset(temp, is.Yes))
+train4 <- rbind(train4, subset(temp, is.Yes))
+train5 <- rbind(train5, subset(temp, is.Yes)[1:nrow(train5),])
+
+qplot(Response, data=train1)
+qplot(Response, data=train2)
+qplot(Response, data=train3)
+qplot(Response, data=train4)
+qplot(Response, data=train5)
+```
+
+
+###Apply an Ensemble of Classifiers...
+```{r}
+train1.glm.fit <- glm(Response ~ ., data=train1, family=binomial)
+train2.tree.fit <- rpart(Response ~ ., data=train2, model="TRUE")
+train3.nb.fit <- naiveBayes(Response ~ ., data=train3)
+train4.nnet.fit <- nnet(Response ~ ., data=train4, size=5)
+
+train5.pred <- knn(train=train5[,1:9], test=subset(job_candidate, test)[,1:9], cl=train5$Response, k=5)
+
+#results of 1st classifier
+train1.pred <- predict(train1.glm.fit, newdata=subset(job_candidate, test), type="response")
+
+#convert the probabilities to predicted values...
+train1.pred <- cut(train1.pred, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train1.glm.cm <- table(Actual=job_candidate$Response[test], Predicted=train1.pred)
+train1.glm.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train1.glm.cm)) / sum(train1.glm.cm) 
+train1.glm.cm["Yes", "Yes"] / sum(train1.glm.cm["Yes", ])
+train1.glm.cm["No", "No"] / sum(train1.glm.cm["No", ])
+train1.glm.cm["Yes", "Yes"] / sum(train1.glm.cm[, "Yes"])
+
+#results of 2nd classifier
+train2.pred <- predict(train2.tree.fit, newdata=subset(job_candidate, test), type="class")
+
+train2.tree.cm <- table(Actual=job_candidate$Response[test], Predicted=train2.pred)
+train2.tree.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train2.tree.cm)) / sum(train2.tree.cm) 
+train2.tree.cm["Yes", "Yes"] / sum(train2.tree.cm["Yes", ])
+train2.tree.cm["No", "No"] / sum(train2.tree.cm["No", ])
+train2.tree.cm["Yes", "Yes"] / sum(train2.tree.cm[, "Yes"])
+
+#results of 3rd classifier
+train3.pred <- predict(train3.nb.fit, newdata=subset(job_candidate, test), type="class")
+
+train3.nb.cm <- table(Actual=job_candidate$Response[test], Predicted=train3.pred)
+train3.nb.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train3.nb.cm)) / sum(train3.nb.cm) 
+train3.nb.cm["Yes", "Yes"] / sum(train3.nb.cm["Yes", ])
+train3.nb.cm["No", "No"] / sum(train3.nb.cm["No", ])
+train3.nb.cm["Yes", "Yes"] / sum(train3.nb.cm[, "Yes"])
+
+#results of 4th classifier
+train4.pred <- predict(train4.nnet.fit, newdata=subset(job_candidate, test), type="class")
+
+train4.nnet.cm <- table(Actual=job_candidate$Response[test], Predicted=train4.pred)
+train4.nnet.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train4.nnet.cm)) / sum(train4.nnet.cm) 
+train4.nnet.cm["Yes", "Yes"] / sum(train4.nnet.cm["Yes", ])
+train4.nnet.cm["No", "No"] / sum(train4.nnet.cm["No", ])
+train4.nnet.cm["Yes", "Yes"] / sum(train4.nnet.cm[, "Yes"])
+
+#results of 5th classifier
+train5.knn.cm <- table(Actual=job_candidate$Response[test], Predicted=train5.pred)
+train5.knn.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train5.knn.cm)) / sum(train5.knn.cm) 
+train5.knn.cm["Yes", "Yes"] / sum(train5.knn.cm["Yes", ])
+train5.knn.cm["No", "No"] / sum(train5.knn.cm["No", ])
+train5.knn.cm["Yes", "Yes"] / sum(train5.knn.cm[, "Yes"])
+
+
+ensemble.balanced.pred <- ensemble(train1.pred, train2.pred, train3.pred, train4.pred, train5.pred)
+
+ensemble.balanced.cm <- table(Actual=job_candidate$Response[test], Predicted=ensemble.balanced.pred)
+ensemble.balanced.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(ensemble.balanced.cm)) / sum(ensemble.balanced.cm) 
+ensemble.balanced.cm["Yes", "Yes"] / sum(ensemble.balanced.cm["Yes", ])
+ensemble.balanced.cm["No", "No"] / sum(ensemble.balanced.cm["No", ])
+ensemble.balanced.cm["Yes", "Yes"] / sum(ensemble.balanced.cm[, "Yes"])
+```
+
+
+###Ensemble of Ensembles:-
+```{r}
+train1.fit1 <- glm(Response ~ ., data=train1, family=binomial)
+train1.fit2 <- rpart(Response ~ ., data=train1, model="TRUE")
+train1.fit3 <- naiveBayes(Response ~ ., data=train1)
+train1.fit4 <- nnet(Response ~ ., data=train1, size=5)
+
+train2.fit1 <- glm(Response ~ ., data=train2, family=binomial)
+train2.fit2 <- rpart(Response ~ ., data=train2, model="TRUE")
+train2.fit3 <- naiveBayes(Response ~ ., data=train2)
+train2.fit4 <- nnet(Response ~ ., data=train2, size=5)
+
+train3.fit1 <- glm(Response ~ ., data=train3, family=binomial)
+train3.fit2 <- rpart(Response ~ ., data=train3, model="TRUE")
+train3.fit3 <- naiveBayes(Response ~ ., data=train3)
+train3.fit4 <- nnet(Response ~ ., data=train3, size=5)
+
+train4.fit1 <- glm(Response ~ ., data=train4, family=binomial)
+train4.fit2 <- rpart(Response ~ ., data=train4, model="TRUE")
+train4.fit3 <- naiveBayes(Response ~ ., data=train4)
+train4.fit4 <- nnet(Response ~ ., data=train4, size=5)
+
+train5.fit1 <- glm(Response ~ ., data=train5, family=binomial)
+train5.fit2 <- rpart(Response ~ ., data=train5, model="TRUE")
+train5.fit3 <- naiveBayes(Response ~ ., data=train5)
+train5.fit4 <- nnet(Response ~ ., data=train5, size=5)
+
+
+#results of 1st ensemble of classifiers
+train1.pred1 <- predict(train1.fit1, newdata=subset(job_candidate, test), type="response")
+#convert the probabilities to predicted values...
+train1.pred1 <- cut(train1.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train1.pred2 <- predict(train1.fit2, newdata=subset(job_candidate, test), type="class")
+
+train1.pred3 <- predict(train1.fit2, newdata=subset(job_candidate, test), type="prob")
+train1.pred3 <- generateProbPred(train1.pred3)
+
+train1.pred4 <- predict(train1.fit3, newdata=subset(job_candidate, test), type="class")
+train1.pred5 <- predict(train1.fit4, newdata=subset(job_candidate, test), type="class")
+
+train1.ensemble.pred <- ensemble(train1.pred1, train1.pred2, train1.pred3, train1.pred4, train1.pred5)
+
+
+#results of 2nd ensemble of classifiers
+train2.pred1 <- predict(train2.fit1, newdata=subset(job_candidate, test), type="response")
+#convert the probabilities to predicted values...
+train2.pred1 <- cut(train2.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train2.pred2 <- predict(train2.fit2, newdata=subset(job_candidate, test), type="class")
+
+train2.pred3 <- predict(train2.fit2, newdata=subset(job_candidate, test), type="prob")
+train2.pred3 <- generateProbPred(train2.pred3)
+
+train2.pred4 <- predict(train2.fit3, newdata=subset(job_candidate, test), type="class")
+train2.pred5 <- predict(train2.fit4, newdata=subset(job_candidate, test), type="class")
+
+train2.ensemble.pred <- ensemble(train2.pred1, train2.pred2, train2.pred3, train2.pred4, train2.pred5)
+
+
+#results of 3rd ensemble of classifiers
+train3.pred1 <- predict(train3.fit1, newdata=subset(job_candidate, test), type="response")
+#convert the probabilities to predicted values...
+train3.pred1 <- cut(train3.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train3.pred2 <- predict(train3.fit2, newdata=subset(job_candidate, test), type="class")
+
+train3.pred3 <- predict(train3.fit2, newdata=subset(job_candidate, test), type="prob")
+train3.pred3 <- generateProbPred(train3.pred3)
+
+train3.pred4 <- predict(train3.fit3, newdata=subset(job_candidate, test), type="class")
+train3.pred5 <- predict(train3.fit4, newdata=subset(job_candidate, test), type="class")
+
+train3.ensemble.pred <- ensemble(train3.pred1, train3.pred2, train3.pred3, train3.pred4, train3.pred5)
+
+
+#results of 4th ensemble of classifiers
+train4.pred1 <- predict(train4.fit1, newdata=subset(job_candidate, test), type="response")
+#convert the probabilities to predicted values...
+train4.pred1 <- cut(train4.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train4.pred2 <- predict(train4.fit2, newdata=subset(job_candidate, test), type="class")
+
+train4.pred3 <- predict(train4.fit2, newdata=subset(job_candidate, test), type="prob")
+train4.pred3 <- generateProbPred(train4.pred3)
+
+train4.pred4 <- predict(train4.fit3, newdata=subset(job_candidate, test), type="class")
+train4.pred5 <- predict(train4.fit4, newdata=subset(job_candidate, test), type="class")
+
+train4.ensemble.pred <- ensemble(train4.pred1, train4.pred2, train4.pred3, train4.pred4, train4.pred5)
+
+
+#results of 5th ensemble of classifiers
+train5.pred1 <- predict(train5.fit1, newdata=subset(job_candidate, test), type="response")
+#convert the probabilities to predicted values...
+train5.pred1 <- cut(train5.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train5.pred2 <- predict(train5.fit2, newdata=subset(job_candidate, test), type="class")
+
+train5.pred3 <- predict(train5.fit2, newdata=subset(job_candidate, test), type="prob")
+train5.pred3 <- generateProbPred(train5.pred3)
+
+train5.pred4 <- predict(train5.fit3, newdata=subset(job_candidate, test), type="class")
+train5.pred5 <- predict(train5.fit4, newdata=subset(job_candidate, test), type="class")
+
+train5.ensemble.pred <- ensemble(train5.pred1, train5.pred2, train5.pred3, train5.pred4, train5.pred5)
+
+
+ensemble.of.ensembles <- ensemble(train1.ensemble.pred, train2.ensemble.pred, train3.ensemble.pred, train4.ensemble.pred, train5.ensemble.pred)
+
+ensemble.of.ensembles.cm <- table(Actual=job_candidate$Response[test], Predicted=ensemble.of.ensembles)
+ensemble.of.ensembles.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(ensemble.of.ensembles.cm)) / sum(ensemble.of.ensembles.cm) 
+ensemble.of.ensembles.cm["Yes", "Yes"] / sum(ensemble.of.ensembles.cm["Yes", ])
+ensemble.of.ensembles.cm["No", "No"] / sum(ensemble.of.ensembles.cm["No", ])
+ensemble.of.ensembles.cm["Yes", "Yes"] / sum(ensemble.of.ensembles.cm[, "Yes"])
+```
+
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
