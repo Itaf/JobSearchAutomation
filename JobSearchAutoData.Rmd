@@ -624,12 +624,12 @@ qplot(Hard.Skills, Soft.Skills, data=mutate(job_candidate[1:5000,1:9], classific
 #Prepare the data for training/testing...
 
 ```{r}
-#take 80% of the data for training, and leave 20% for testing...
+#take 90% of the data for training, and leave 10% for testing...
 #test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.9,0.1)) 
 #test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.8,0.2)) 
 #test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.75,0.25)) 
-#test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.7,0.3)) 
-test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.6,0.4)) 
+test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.7,0.3)) 
+#test <- sample(c(FALSE, TRUE), nrow(job_candidate), replace=TRUE, prob=c(0.6,0.4)) 
 train <- !test
 ```
 
@@ -714,6 +714,7 @@ roc.plot(job_candidate$Response[test], test.prob)
 
 
 #A function that generates probabilistic predictions from the probabilities given by a decision tree...
+
 ```{r}
 generateProbPred <- function(prob)
 {
@@ -725,6 +726,10 @@ generateProbPred <- function(prob)
   print(pred.t, n=nrow(subset(job_candidate, test)))
 
   pred.t <- mutate(pred.t, predicted = case_when(random < No ~ 1, random >= No & random <= No + Yes ~ 2))
+  
+  #results...
+  pred.t %>%
+  print(n=Inf)
   
   return(pred.t)
 }
@@ -744,7 +749,7 @@ summary(tree.fit)
 prp(tree.fit) #basic plot
 fancyRpartPlot(tree.fit, main="Classification Tree for job_candidate Data") # fancier plot
 
-post(tree.fit,file="C:/Users/ITAFO/Documents/DATA 5000/Project/Data/decisionTree.ps") #create postscript plot of decision tree
+post(tree.fit,file="decisionTree.ps") #create postscript plot of decision tree
 
 plotcp(tree.fit) #plot cross-validation results
 printcp(tree.fit) #display cp table
@@ -766,11 +771,6 @@ tree.class.cm["Yes", "Yes"] / sum(tree.class.cm[, "Yes"]) #precision
 #Predict responses for test data based on probabilities...
 tree.prob.pred <- predict(tree.fit, newdata=subset(job_candidate, test), type="prob")
 tree.prob.pred.t <- generateProbPred(tree.prob.pred)
-
-#results...
-tree.prob.pred.t %>%
-print(n=Inf)
-
 
 #plot a scatter plot of prediction probabilities...
 qplot(No, Yes, data=tree.prob.pred.t, xlab="'No' Probability", ylab="'Yes' Probability", main="Prediction Probabilities")
@@ -844,6 +844,7 @@ nnet.cm["Yes", "Yes"] / sum(nnet.cm[, "Yes"]) #precision
 ##Ensemble Classification:-
 
 ###A function to get the final decision for each sample of the testing data based on the mostly predicted class among an ensemble of 5 classifiers, where a 5th classifier is not necessary...
+
 ```{r}
 ensemble <- function(t1, t2, t3, t4, t5) 
 {
@@ -924,6 +925,7 @@ ensemble <- function(t1, t2, t3, t4, t5)
 
 
 ###Apply an Ensemble of the above Classifiers...
+
 ```{r}
 ensemble.pred <- ensemble(test.pred, tree.class.pred, tree.prob.pred.t$predicted, nb.pred, nnet.pred)
 
@@ -939,7 +941,6 @@ ensemble.cm["Yes", "Yes"] / sum(ensemble.cm[, "Yes"])
 
 
 ##Class Imbalance:-
-
 ```{r}
 #visualize responses in training and testing data...
 qplot(Response, data=subset(job_candidate, train), xlab="Response", ylab="Count", main="Class Imbalance in Training Data")
@@ -1018,7 +1019,7 @@ summary(tree.balanced.fit)
 prp(tree.balanced.fit) #basic plot
 fancyRpartPlot(tree.balanced.fit, main="Classification Tree for job_candidate Data") # fancier plot
 
-post(tree.balanced.fit,file="C:/Users/ITAFO/Documents/DATA 5000/Project/Data/decisionTree(balanced).ps") #create postscript plot of decision tree
+post(tree.balanced.fit,file="decisionTree(balanced).ps") #create postscript plot of decision tree
 
 plotcp(tree.balanced.fit) #plot cross-validation results
 printcp(tree.balanced.fit) #display cp table
@@ -1041,15 +1042,10 @@ tree.balanced.class.cm["Yes", "Yes"] / sum(tree.balanced.class.cm[, "Yes"]) #pre
 tree.balanced.prob.pred <- predict(tree.balanced.fit, newdata=subset(job_candidate, test), type="prob")
 tree.balanced.prob.pred.t <- generateProbPred(tree.balanced.prob.pred)
 
-#results...
-tree.balanced.prob.pred.t %>%
-print(n=Inf)
-
-
 #plot a scatter plot of prediction probabilities...
 qplot(No, Yes, data=tree.balanced.prob.pred.t, xlab="'No' Probability", ylab="'Yes' Probability", main="Prediction Probabilities")
 
-tree.balanced.prob.cm <- table(Actual=tree.balanced.prob.pred.t$real.balanced, Predicted=tree.balanced.prob.pred.t$predicted.balanced)
+tree.balanced.prob.cm <- table(Actual=tree.balanced.prob.pred.t$real, Predicted=tree.balanced.prob.pred.t$predicted)
 tree.balanced.prob.cm
 
 #Calculate classification performance metrics...
@@ -1097,9 +1093,8 @@ nnet.balanced.cm["Yes", "Yes"] / sum(nnet.balanced.cm[, "Yes"]) #precision
 
 
 ##Ensemble Classification:-
-
 ```{r}
-ensemble.rose.pred <- ensemble(test.balanced.pred, tree.balanced.class.pred, tree.balanced.prob.pred.t$predicted.balanced, nb.balanced.pred, nnet.balanced.pred)
+ensemble.rose.pred <- ensemble(test.balanced.pred, tree.balanced.class.pred, tree.balanced.prob.pred.t$predicted, nb.balanced.pred, nnet.balanced.pred)
 
 ensemble.rose.cm <- table(Actual=job_candidate$Response[test], Predicted=ensemble.rose.pred)
 ensemble.rose.cm
@@ -1113,6 +1108,7 @@ ensemble.rose.cm["Yes", "Yes"] / sum(ensemble.rose.cm[, "Yes"])
 
 
 ###Prepare 4 training sets from the original set...
+
 ```{r}
 temp <- subset(job_candidate, train)
 is.Yes <- temp["Response"]=="Yes"
@@ -1145,6 +1141,7 @@ qplot(Response, data=train5)
 
 
 ###Apply an Ensemble of Classifiers...
+
 ```{r}
 train1.glm.fit <- glm(Response ~ ., data=train1, family=binomial)
 train2.tree.fit <- rpart(Response ~ ., data=train2, model="TRUE")
@@ -1215,6 +1212,7 @@ train5.knn.cm["No", "No"] / sum(train5.knn.cm["No", ])
 train5.knn.cm["Yes", "Yes"] / sum(train5.knn.cm[, "Yes"])
 
 
+#create an ensemble with the above 5 classifiers...
 ensemble.balanced.pred <- ensemble(train1.pred, train2.pred, train3.pred, train4.pred, train5.pred)
 
 ensemble.balanced.cm <- table(Actual=job_candidate$Response[test], Predicted=ensemble.balanced.pred)
@@ -1258,7 +1256,7 @@ train5.fit4 <- nnet(Response ~ ., data=train5, size=5)
 
 #results of 1st ensemble of classifiers
 train1.pred1 <- predict(train1.fit1, newdata=subset(job_candidate, test), type="response")
-#convert the probabilities to predicted values...
+#convert the probabilities to predicted values
 train1.pred1 <- cut(train1.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
 
 train1.pred2 <- predict(train1.fit2, newdata=subset(job_candidate, test), type="class")
@@ -1269,12 +1267,12 @@ train1.pred3 <- generateProbPred(train1.pred3)
 train1.pred4 <- predict(train1.fit3, newdata=subset(job_candidate, test), type="class")
 train1.pred5 <- predict(train1.fit4, newdata=subset(job_candidate, test), type="class")
 
-train1.ensemble.pred <- ensemble(train1.pred1, train1.pred2, train1.pred3, train1.pred4, train1.pred5)
+train1.ensemble.pred <- ensemble(train1.pred1, train1.pred2, train1.pred3$predicted, train1.pred4, train1.pred5)
 
 
 #results of 2nd ensemble of classifiers
 train2.pred1 <- predict(train2.fit1, newdata=subset(job_candidate, test), type="response")
-#convert the probabilities to predicted values...
+#convert the probabilities to predicted values
 train2.pred1 <- cut(train2.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
 
 train2.pred2 <- predict(train2.fit2, newdata=subset(job_candidate, test), type="class")
@@ -1285,12 +1283,12 @@ train2.pred3 <- generateProbPred(train2.pred3)
 train2.pred4 <- predict(train2.fit3, newdata=subset(job_candidate, test), type="class")
 train2.pred5 <- predict(train2.fit4, newdata=subset(job_candidate, test), type="class")
 
-train2.ensemble.pred <- ensemble(train2.pred1, train2.pred2, train2.pred3, train2.pred4, train2.pred5)
+train2.ensemble.pred <- ensemble(train2.pred1, train2.pred2, train2.pred3$predicted, train2.pred4, train2.pred5)
 
 
 #results of 3rd ensemble of classifiers
 train3.pred1 <- predict(train3.fit1, newdata=subset(job_candidate, test), type="response")
-#convert the probabilities to predicted values...
+#convert the probabilities to predicted values
 train3.pred1 <- cut(train3.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
 
 train3.pred2 <- predict(train3.fit2, newdata=subset(job_candidate, test), type="class")
@@ -1301,12 +1299,12 @@ train3.pred3 <- generateProbPred(train3.pred3)
 train3.pred4 <- predict(train3.fit3, newdata=subset(job_candidate, test), type="class")
 train3.pred5 <- predict(train3.fit4, newdata=subset(job_candidate, test), type="class")
 
-train3.ensemble.pred <- ensemble(train3.pred1, train3.pred2, train3.pred3, train3.pred4, train3.pred5)
+train3.ensemble.pred <- ensemble(train3.pred1, train3.pred2, train3.pred3$predicted, train3.pred4, train3.pred5)
 
 
 #results of 4th ensemble of classifiers
 train4.pred1 <- predict(train4.fit1, newdata=subset(job_candidate, test), type="response")
-#convert the probabilities to predicted values...
+#convert the probabilities to predicted values
 train4.pred1 <- cut(train4.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
 
 train4.pred2 <- predict(train4.fit2, newdata=subset(job_candidate, test), type="class")
@@ -1317,12 +1315,12 @@ train4.pred3 <- generateProbPred(train4.pred3)
 train4.pred4 <- predict(train4.fit3, newdata=subset(job_candidate, test), type="class")
 train4.pred5 <- predict(train4.fit4, newdata=subset(job_candidate, test), type="class")
 
-train4.ensemble.pred <- ensemble(train4.pred1, train4.pred2, train4.pred3, train4.pred4, train4.pred5)
+train4.ensemble.pred <- ensemble(train4.pred1, train4.pred2, train4.pred3$predicted, train4.pred4, train4.pred5)
 
 
 #results of 5th ensemble of classifiers
 train5.pred1 <- predict(train5.fit1, newdata=subset(job_candidate, test), type="response")
-#convert the probabilities to predicted values...
+#convert the probabilities to predicted values
 train5.pred1 <- cut(train5.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
 
 train5.pred2 <- predict(train5.fit2, newdata=subset(job_candidate, test), type="class")
@@ -1333,9 +1331,10 @@ train5.pred3 <- generateProbPred(train5.pred3)
 train5.pred4 <- predict(train5.fit3, newdata=subset(job_candidate, test), type="class")
 train5.pred5 <- predict(train5.fit4, newdata=subset(job_candidate, test), type="class")
 
-train5.ensemble.pred <- ensemble(train5.pred1, train5.pred2, train5.pred3, train5.pred4, train5.pred5)
+train5.ensemble.pred <- ensemble(train5.pred1, train5.pred2, train5.pred3$predicted, train5.pred4, train5.pred5)
 
 
+#create an ensemble of the above 5 ensembles...
 ensemble.of.ensembles <- ensemble(train1.ensemble.pred, train2.ensemble.pred, train3.ensemble.pred, train4.ensemble.pred, train5.ensemble.pred)
 
 ensemble.of.ensembles.cm <- table(Actual=job_candidate$Response[test], Predicted=ensemble.of.ensembles)
