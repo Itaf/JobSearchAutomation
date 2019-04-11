@@ -604,7 +604,6 @@ plotcluster(job_candidate[,1:9], cl.fit1$cluster)
 
 #Plot pairs of features...
 plot(job_candidate[1:5000,1:9], col=cl.fit1$cluster[1:5000], pch=cl.fit1$cluster[1:5000], main=paste(i_choice3,"Job-Candidate Clusters - kmeans (euclidean)"))  
-
 ```
 
 
@@ -1140,7 +1139,7 @@ qplot(Response, data=train5)
 ```
 
 
-###Apply an Ensemble of Classifiers...
+###Apply an Ensemble of Different Classifiers...
 
 ```{r}
 train1.glm.fit <- glm(Response ~ ., data=train1, family=binomial)
@@ -1226,7 +1225,7 @@ ensemble.balanced.cm["Yes", "Yes"] / sum(ensemble.balanced.cm[, "Yes"])
 ```
 
 
-###Ensemble of Ensembles:-
+###Ensemble of Ensembles of Differring Classifiers:-
 ```{r}
 train1.fit1 <- glm(Response ~ ., data=train1, family=binomial)
 train1.fit2 <- rpart(Response ~ ., data=train1, model="TRUE")
@@ -1269,6 +1268,15 @@ train1.pred5 <- predict(train1.fit4, newdata=subset(job_candidate, test), type="
 
 train1.ensemble.pred <- ensemble(train1.pred1, train1.pred2, train1.pred3$predicted, train1.pred4, train1.pred5)
 
+train1.ensemble.cm <- table(Actual=job_candidate$Response[test], Predicted=train1.ensemble.pred)
+train1.ensemble.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train1.ensemble.cm)) / sum(train1.ensemble.cm) 
+train1.ensemble.cm["Yes", "Yes"] / sum(train1.ensemble.cm["Yes", ])
+train1.ensemble.cm["No", "No"] / sum(train1.ensemble.cm["No", ])
+train1.ensemble.cm["Yes", "Yes"] / sum(train1.ensemble.cm[, "Yes"])
+
 
 #results of 2nd ensemble of classifiers
 train2.pred1 <- predict(train2.fit1, newdata=subset(job_candidate, test), type="response")
@@ -1285,6 +1293,14 @@ train2.pred5 <- predict(train2.fit4, newdata=subset(job_candidate, test), type="
 
 train2.ensemble.pred <- ensemble(train2.pred1, train2.pred2, train2.pred3$predicted, train2.pred4, train2.pred5)
 
+train2.ensemble.cm <- table(Actual=job_candidate$Response[test], Predicted=train2.ensemble.pred)
+train2.ensemble.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train2.ensemble.cm)) / sum(train2.ensemble.cm) 
+train2.ensemble.cm["Yes", "Yes"] / sum(train2.ensemble.cm["Yes", ])
+train2.ensemble.cm["No", "No"] / sum(train2.ensemble.cm["No", ])
+train2.ensemble.cm["Yes", "Yes"] / sum(train2.ensemble.cm[, "Yes"])
 
 #results of 3rd ensemble of classifiers
 train3.pred1 <- predict(train3.fit1, newdata=subset(job_candidate, test), type="response")
@@ -1301,6 +1317,14 @@ train3.pred5 <- predict(train3.fit4, newdata=subset(job_candidate, test), type="
 
 train3.ensemble.pred <- ensemble(train3.pred1, train3.pred2, train3.pred3$predicted, train3.pred4, train3.pred5)
 
+train3.ensemble.cm <- table(Actual=job_candidate$Response[test], Predicted=train3.ensemble.pred)
+train3.ensemble.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train3.ensemble.cm)) / sum(train3.ensemble.cm) 
+train3.ensemble.cm["Yes", "Yes"] / sum(train3.ensemble.cm["Yes", ])
+train3.ensemble.cm["No", "No"] / sum(train3.ensemble.cm["No", ])
+train3.ensemble.cm["Yes", "Yes"] / sum(train3.ensemble.cm[, "Yes"])
 
 #results of 4th ensemble of classifiers
 train4.pred1 <- predict(train4.fit1, newdata=subset(job_candidate, test), type="response")
@@ -1317,6 +1341,14 @@ train4.pred5 <- predict(train4.fit4, newdata=subset(job_candidate, test), type="
 
 train4.ensemble.pred <- ensemble(train4.pred1, train4.pred2, train4.pred3$predicted, train4.pred4, train4.pred5)
 
+train4.ensemble.cm <- table(Actual=job_candidate$Response[test], Predicted=train4.ensemble.pred)
+train4.ensemble.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train4.ensemble.cm)) / sum(train4.ensemble.cm) 
+train4.ensemble.cm["Yes", "Yes"] / sum(train4.ensemble.cm["Yes", ])
+train4.ensemble.cm["No", "No"] / sum(train4.ensemble.cm["No", ])
+train4.ensemble.cm["Yes", "Yes"] / sum(train4.ensemble.cm[, "Yes"])
 
 #results of 5th ensemble of classifiers
 train5.pred1 <- predict(train5.fit1, newdata=subset(job_candidate, test), type="response")
@@ -1333,6 +1365,14 @@ train5.pred5 <- predict(train5.fit4, newdata=subset(job_candidate, test), type="
 
 train5.ensemble.pred <- ensemble(train5.pred1, train5.pred2, train5.pred3$predicted, train5.pred4, train5.pred5)
 
+train5.ensemble.cm <- table(Actual=job_candidate$Response[test], Predicted=train5.ensemble.pred)
+train5.ensemble.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train5.ensemble.cm)) / sum(train5.ensemble.cm) 
+train5.ensemble.cm["Yes", "Yes"] / sum(train5.ensemble.cm["Yes", ])
+train5.ensemble.cm["No", "No"] / sum(train5.ensemble.cm["No", ])
+train5.ensemble.cm["Yes", "Yes"] / sum(train5.ensemble.cm[, "Yes"])
 
 #create an ensemble of the above 5 ensembles...
 ensemble.of.ensembles <- ensemble(train1.ensemble.pred, train2.ensemble.pred, train3.ensemble.pred, train4.ensemble.pred, train5.ensemble.pred)
@@ -1347,6 +1387,150 @@ ensemble.of.ensembles.cm["No", "No"] / sum(ensemble.of.ensembles.cm["No", ])
 ensemble.of.ensembles.cm["Yes", "Yes"] / sum(ensemble.of.ensembles.cm[, "Yes"])
 ```
 
+
+###Ensemble of Ensembles of Similar Classifiers:-
+```{r}
+train1.other.fit1 <- glm(Response ~ ., data=train1, family=binomial)
+train1.other.fit2 <- glm(Response ~ ., data=train1, family=binomial)
+train1.other.fit3 <- glm(Response ~ ., data=train1, family=binomial)
+train1.other.fit4 <- glm(Response ~ ., data=train1, family=binomial)
+train1.other.fit5 <- glm(Response ~ ., data=train1, family=binomial)
+
+train2.other.fit1 <- rpart(Response ~ ., data=train2, model="TRUE")
+train2.other.fit2 <- rpart(Response ~ ., data=train2, model="TRUE")
+train2.other.fit3 <- rpart(Response ~ ., data=train2, model="TRUE")
+train2.other.fit4 <- rpart(Response ~ ., data=train2, model="TRUE")
+train2.other.fit5 <- rpart(Response ~ ., data=train2, model="TRUE")
+
+train3.other.fit1 <- naiveBayes(Response ~ ., data=train3)
+train3.other.fit2 <- naiveBayes(Response ~ ., data=train3)
+train3.other.fit3 <- naiveBayes(Response ~ ., data=train3)
+train3.other.fit4 <- naiveBayes(Response ~ ., data=train3)
+train3.other.fit5 <- naiveBayes(Response ~ ., data=train3)
+
+train4.other.fit1 <- nnet(Response ~ ., data=train4, size=5)
+train4.other.fit2 <- nnet(Response ~ ., data=train4, size=5)
+train4.other.fit3 <- nnet(Response ~ ., data=train4, size=5)
+train4.other.fit4 <- nnet(Response ~ ., data=train4, size=5)
+train4.other.fit5 <- nnet(Response ~ ., data=train4, size=5)
+
+train5.other.fit1 <- knn(train=train5[,1:9], test=subset(job_candidate, test)[,1:9], cl=train5$Response, k=5)
+train5.other.fit2 <- knn(train=train5[,1:9], test=subset(job_candidate, test)[,1:9], cl=train5$Response, k=5)
+train5.other.fit3 <- knn(train=train5[,1:9], test=subset(job_candidate, test)[,1:9], cl=train5$Response, k=5)
+train5.other.fit4 <- knn(train=train5[,1:9], test=subset(job_candidate, test)[,1:9], cl=train5$Response, k=5)
+train5.other.fit5 <- knn(train=train5[,1:9], test=subset(job_candidate, test)[,1:9], cl=train5$Response, k=5)
+
+
+#results of 1st ensemble of classifiers
+train1.other.pred1 <- predict(train1.other.fit1, newdata=subset(job_candidate, test), type="response")
+#convert the probabilities to predicted values
+train1.other.pred1 <- cut(train1.other.pred1, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train1.other.pred2 <- predict(train1.other.fit2, newdata=subset(job_candidate, test), type="response")
+#convert the probabilities to predicted values
+train1.other.pred2 <- cut(train1.other.pred2, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train1.other.pred3 <- predict(train1.other.fit3, newdata=subset(job_candidate, test), type="response")
+#convert the probabilities to predicted values
+train1.other.pred3 <- cut(train1.other.pred3, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train1.other.pred4 <- predict(train1.other.fit4, newdata=subset(job_candidate, test), type="response")
+#convert the probabilities to predicted values
+train1.other.pred4 <- cut(train1.other.pred4, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train1.other.pred5 <- predict(train1.other.fit5, newdata=subset(job_candidate, test), type="response")
+#convert the probabilities to predicted values
+train1.other.pred5 <- cut(train1.other.pred5, breaks=c(0,0.5,1), labels=c("No", "Yes"), include.lowest=TRUE)
+
+train1.ensemble2.pred <- ensemble(train1.other.pred1, train1.other.pred2, train1.other.pred3, train1.other.pred4, train1.other.pred5)
+
+train1.ensemble2.cm <- table(Actual=job_candidate$Response[test], Predicted=train1.ensemble2.pred)
+train1.ensemble2.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train1.ensemble2.cm)) / sum(train1.ensemble2.cm) 
+train1.ensemble2.cm["Yes", "Yes"] / sum(train1.ensemble2.cm["Yes", ])
+train1.ensemble2.cm["No", "No"] / sum(train1.ensemble2.cm["No", ])
+train1.ensemble2.cm["Yes", "Yes"] / sum(train1.ensemble2.cm[, "Yes"])
+
+#results of 2nd ensemble of classifiers
+train2.other.pred1 <- predict(train2.other.fit1, newdata=subset(job_candidate, test), type="class")
+train2.other.pred2 <- predict(train2.other.fit2, newdata=subset(job_candidate, test), type="class")
+train2.other.pred3 <- predict(train2.other.fit3, newdata=subset(job_candidate, test), type="class")
+train2.other.pred4 <- predict(train2.other.fit4, newdata=subset(job_candidate, test), type="class")
+train2.other.pred5 <- predict(train2.other.fit5, newdata=subset(job_candidate, test), type="class")
+
+train2.ensemble2.pred <- ensemble(train2.other.pred1, train2.other.pred2, train2.other.pred3, train2.other.pred4, train2.other.pred5)
+
+train2.ensemble2.cm <- table(Actual=job_candidate$Response[test], Predicted=train2.ensemble2.pred)
+train2.ensemble2.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train2.ensemble2.cm)) / sum(train2.ensemble2.cm) 
+train2.ensemble2.cm["Yes", "Yes"] / sum(train2.ensemble2.cm["Yes", ])
+train2.ensemble2.cm["No", "No"] / sum(train2.ensemble2.cm["No", ])
+train2.ensemble2.cm["Yes", "Yes"] / sum(train2.ensemble2.cm[, "Yes"])
+
+#results of 3rd ensemble of classifiers
+train3.other.pred1 <- predict(train3.other.fit1, newdata=subset(job_candidate, test), type="class")
+train3.other.pred2 <- predict(train3.other.fit2, newdata=subset(job_candidate, test), type="class")
+train3.other.pred3 <- predict(train3.other.fit3, newdata=subset(job_candidate, test), type="class")
+train3.other.pred4 <- predict(train3.other.fit4, newdata=subset(job_candidate, test), type="class")
+train3.other.pred5 <- predict(train3.other.fit5, newdata=subset(job_candidate, test), type="class")
+
+train3.ensemble2.pred <- ensemble(train3.other.pred1, train3.other.pred2, train3.other.pred3, train3.other.pred4, train3.other.pred5)
+
+train3.ensemble2.cm <- table(Actual=job_candidate$Response[test], Predicted=train3.ensemble2.pred)
+train3.ensemble2.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train3.ensemble2.cm)) / sum(train3.ensemble2.cm) 
+train3.ensemble2.cm["Yes", "Yes"] / sum(train3.ensemble2.cm["Yes", ])
+train3.ensemble2.cm["No", "No"] / sum(train3.ensemble2.cm["No", ])
+train3.ensemble2.cm["Yes", "Yes"] / sum(train3.ensemble2.cm[, "Yes"])
+
+#results of 4th ensemble of classifiers
+train4.other.pred1 <- predict(train4.other.fit1, newdata=subset(job_candidate, test), type="class")
+train4.other.pred2 <- predict(train4.other.fit2, newdata=subset(job_candidate, test), type="class")
+train4.other.pred3 <- predict(train4.other.fit3, newdata=subset(job_candidate, test), type="class")
+train4.other.pred4 <- predict(train4.other.fit4, newdata=subset(job_candidate, test), type="class")
+train4.other.pred5 <- predict(train4.other.fit5, newdata=subset(job_candidate, test), type="class")
+
+train4.ensemble2.pred <- ensemble(train4.other.pred1, train4.other.pred2, train4.other.pred3, train4.other.pred4, train4.other.pred5)
+
+train4.ensemble2.cm <- table(Actual=job_candidate$Response[test], Predicted=train4.ensemble2.pred)
+train4.ensemble2.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train4.ensemble2.cm)) / sum(train4.ensemble2.cm) 
+train4.ensemble2.cm["Yes", "Yes"] / sum(train4.ensemble2.cm["Yes", ])
+train4.ensemble2.cm["No", "No"] / sum(train4.ensemble2.cm["No", ])
+train4.ensemble2.cm["Yes", "Yes"] / sum(train4.ensemble2.cm[, "Yes"])
+
+#results of 5th ensemble of classifiers
+train5.ensemble2.pred <- ensemble(train5.other.fit1, train5.other.fit2, train5.other.fit3, train5.other.fit4, train5.other.fit5)
+
+train5.ensemble2.cm <- table(Actual=job_candidate$Response[test], Predicted=train5.ensemble2.pred)
+train5.ensemble2.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(train5.ensemble2.cm)) / sum(train5.ensemble2.cm) 
+train5.ensemble2.cm["Yes", "Yes"] / sum(train5.ensemble2.cm["Yes", ])
+train5.ensemble2.cm["No", "No"] / sum(train5.ensemble2.cm["No", ])
+train5.ensemble2.cm["Yes", "Yes"] / sum(train5.ensemble2.cm[, "Yes"])
+
+#create an ensemble of the above 5 ensembles...
+ensemble.of.ensembles2 <- ensemble(train1.ensemble2.pred, train2.ensemble2.pred, train3.ensemble2.pred, train4.ensemble2.pred, train5.ensemble2.pred)
+
+ensemble.of.ensembles2.cm <- table(Actual=job_candidate$Response[test], Predicted=ensemble.of.ensembles2)
+ensemble.of.ensembles2.cm
+
+#calculate prediction accuracy, sensitivity (recall), specificity, and precision...
+sum(diag(ensemble.of.ensembles2.cm)) / sum(ensemble.of.ensembles2.cm) 
+ensemble.of.ensembles2.cm["Yes", "Yes"] / sum(ensemble.of.ensembles2.cm["Yes", ])
+ensemble.of.ensembles2.cm["No", "No"] / sum(ensemble.of.ensembles2.cm["No", ])
+ensemble.of.ensembles2.cm["Yes", "Yes"] / sum(ensemble.of.ensembles2.cm[, "Yes"])
+```
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
