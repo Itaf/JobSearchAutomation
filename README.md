@@ -19,8 +19,10 @@ Finally, we will validate and verify our work by testing the website.
 1. Install R
 2. Download RStudio
 3. Download the files from this repository
-4. Open them in RStudio
-5. Hit the run button
+4. Open the files in RStudio
+5. To visualize the data, run all chuncks in the dataVisualizationAndExploration.Rmd module
+6. To analyze the data using unsupervised and supervised learning, run all chuncks in the dataAnalysis.Rmd module
+7. To view sample results of our data analysis, run all chunks in the resultsEvaluationAndValidation.Rmd module
 
 ## References
 [1] Hab, M. (2017, April 22). Online Job Postings. Retrieved March 2, 2019, from
