@@ -1,0 +1,214 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+
+#Import libraries and/or packages...
+
+```{r}
+library(ggplot2)
+```
+
+
+#Data Exploration...
+
+```{r}
+jobsData <- read.csv("Job Posts.csv")
+head(jobsData)
+str(jobsData)
+summary(jobsData)
+```
+
+```{r}
+candidatesData <- read.csv("Job Search Questionnaire (Responses).csv")
+head(candidatesData)
+str(candidatesData)
+summary(candidatesData)
+```
+
+
+#Visualize candidates' age and gender information...
+
+```{r}
+summary(candidatesData$Age.Range)
+qplot(Age.Range, data=candidatesData, main="Candidate Age Ranges", xlab="Age (years)", ylab="Candidates")
+```
+
+```{r}
+summary(candidatesData$Gender)
+qplot(Gender, data=candidatesData, main="Candidate Genders", xlab="Gender", ylab="Candidates")
+```
+
+
+#Visualize candidates' education information...
+
+```{r}
+summary(candidatesData$Degree)
+qplot(Degree, data=candidatesData, fill=Gender, main="Candidate Degrees", xlab="Degree", ylab="Candidates") + coord_flip()
+```
+
+```{r}
+summary(candidatesData$Major)
+qplot(Major, data=candidatesData, fill=Gender, main="Candidate Majors", xlab="Major", ylab="Candidates") + coord_flip()
+```
+
+```{r}
+summary(candidatesData$Minor.Specialization)
+qplot(Minor.Specialization, data=candidatesData, fill=Gender, main="Candidate Minors/Specializations", xlab="Minor/Specializations", ylab="Candidates") + coord_flip()
+```
+
+
+#Visualize different aspects about candidates according to their age and gender information...
+
+```{r}
+qplot(Age.Range, Status, data=candidatesData, colour=Gender, main="Candidate Employment Status vs. Age Range", xlab="Age Range", ylab="Status") + geom_point(size=2)
+```
+
+```{r}
+ggplot(subset(candidatesData)) +
+    geom_bar(aes(Age.Range)) +
+    facet_wrap(~Status, scales="free_y") +
+    theme(axis.text.x=element_text(size=rel(0.8)))
+```
+
+
+#Visualize candidates' job search activity and work availability...
+
+```{r}
+summary(candidatesData$Activity)
+qplot(Activity, data=candidatesData, main="Candidate Job Search Activity", xlab="Activity", ylab="Candidates")
+```
+
+```{r}
+summary(candidatesData$Availability)
+qplot(Availability, data=candidatesData, fill=Status, main="Candidate Availability", xlab="Availability", ylab="Candidates") + coord_flip()
+```
+
+```{r}
+summary(candidatesData$Graduation.Date)
+qplot(Graduation.Date, data=candidatesData, fill=Status, main="Student Graduation Dates", xlab="Grduation Date", ylab="Candidates") + coord_flip()
+```
+
+
+#Visualize job posting dates...
+
+```{r}
+summary(jobsData$date)
+qplot(jobsData$Year, jobsData$Month, main="Job Posting Dates", xlab="Year", ylab="Month") 
+qplot(jobsData$Year, data=jobsData, binwidth=3, main="Jobs per Year", xlab="Year", ylab="Jobs") 
+qplot(jobsData$Month, data=jobsData, binwidth=3, main="Jobs per Month", xlab="Month", ylab="Jobs") 
+```
+
+
+#Summarize the number of job Posts per Company...
+
+```{r}
+summary(jobsData$Company)
+```
+
+
+#Visualize the number of IT jobs...
+
+```{r}
+summary(jobsData$IT)
+qplot(IT, data=jobsData, main="IT Jobs", xlab="IT", ylab="Jobs")  
+```
+
+```{r}
+ggplot(subset(jobsData)) +
+    geom_bar(aes(Year)) +
+    facet_wrap(~IT, scales="free_y") +
+    theme(axis.text.x=element_text(size=rel(0.8)))
+```
+
+
+#Visualize job and candidates' preferred work locations...
+
+```{r}
+summary(jobsData$Location)
+```
+
+```{r}
+summary(candidatesData$Country)
+qplot(Country, data=candidatesData, fill=City, main="Preferred Work Locations", xlab="Country", ylab="Candidates")
+```
+
+```{r}
+summary(candidatesData$Province.State)
+qplot(Province.State, data=candidatesData, main="Preferred Work Provinces/States", xlab="Province/State", ylab="Candidates")
+```
+
+```{r}
+summary(candidatesData$City)
+qplot(City, data=candidatesData, main="Preferred Work Cities", xlab="City", ylab="Candidates") 
+```
+
+
+#The next 2 chunks are to compare posted job titles and candidates' desired job titles...
+
+```{r}
+summary(jobsData$Title)
+```
+
+```{r}
+summary(candidatesData$Job.Title)
+qplot(Job.Title, data=candidatesData, main="Candidates per Job Title", xlab="Job Title", ylab="Candidates") + coord_flip()
+```
+
+
+#The next 3 chunks are to compare the eligibility requirements and the audience of job posts, with the candidates' employment statuses and experience levels...
+
+```{r}
+summary(jobsData$Eligibility)
+summary(jobsData$Audience)
+```
+
+```{r}
+summary(candidatesData$Status)
+qplot(Status, data=candidatesData, fill=Age.Range, main="Employment Statuses", xlab="Status", ylab="Candidates") + coord_flip()
+```
+
+```{r}
+summary(candidatesData$Experience.Level)
+qplot(Experience.Level, data=candidatesData, fill=Status, main="Experience Levels", xlab="Experience Level", ylab="Candidates") 
+```
+
+
+#The next 3 chunks are to compare between the posted work terms and/or durations, and the candidates' desired employment types...
+
+```{r}
+summary(jobsData$Term)
+```
+
+```{r}
+summary(jobsData$Duration)
+```
+
+```{r}
+summary(candidatesData$Employment.Types)
+qplot(Employment.Types, data=candidatesData, fill=Experience.Level, main="Employment Types", xlab="Employment Type", ylab="Candidates") + coord_flip()
+```
+
+
+#The next 2 chunks are to visualize the soft and hard skills of the candidates...
+```{r}
+summary(candidatesData$Hard.Skills)
+qplot(Hard.Skills, data=candidatesData, fill=Experience.Level, main="Hard Skills", xlab="Top Three Hard Skills", ylab="Candidates") + coord_flip()
+```
+
+```{r}
+summary(candidatesData$Soft.Skills)
+qplot(Soft.Skills, data=candidatesData, fill=Experience.Level, main="Soft Skills", xlab="Top Three Soft Skills", ylab="Candidates") + coord_flip()
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
