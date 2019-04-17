@@ -1,0 +1,133 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+results <- read.csv("results.csv")
+head(results)
+str(results)
+summary(results)
+```
+
+```{r}
+summary(results$Data.Split)
+summary(results$Balanced) 
+summary(results$Balance.Method)
+```
+
+
+```{r}
+qplot(Learner, data=results, fill=Prediction.Type, main="Learners", xlab="Learner", ylab="Count") + coord_flip()
+```
+
+```{r}
+qplot(Data.Split, Training.Observations, data=results, main="Training Observations vs. Data Split", xlab="Data Split", ylab="Training Observations")
+```
+
+```{r}
+qplot(Training.Observations, Accuracy, data=results, color=Balanced, main="Accuracy vs. Training Observations", xlab="Training Observations", ylab="Accuracy")
+qplot(Training.Observations, Sensitivity, data=results, color=Balanced, main="Sensitivity vs. Training Observations", xlab="Training Observations", ylab="Sensitivity")
+qplot(Training.Observations, Specificity, data=results, color=Balanced, main="Specificity vs. Training Observations", xlab="Training Observations", ylab="Specificity")
+qplot(Training.Observations, Precision, data=results, color=Balanced, main="Precision vs. Training Observations", xlab="Training Observations", ylab="Precision")
+qplot(Training.Observations, F1.Score, data=results, color=Balanced, main="F1 Score vs. Training Observations", xlab="Training Observations", ylab="F1 Score")
+```
+
+
+```{r}
+qplot(Learner, Accuracy, data=results, facets= . ~ Data.Split, colour=Balanced, main="Accuracy vs. Learner by Data Split") + coord_flip()
+```
+
+```{r}
+qplot(Learner, Sensitivity, data=results, facets= . ~ Data.Split, colour=Balanced, main="Sensitivity vs. Learner by Data Split") + coord_flip()
+```
+
+```{r}
+qplot(Learner, Specificity, data=results, facets= . ~ Data.Split, colour=Balanced, main="Specificity vs. Learner by Data Split") + coord_flip()
+```
+
+```{r}
+qplot(Learner, Precision, data=results, facets= . ~ Data.Split, colour=Balanced, main="Precision vs. Learner by Data Split") + coord_flip()
+```
+
+```{r}
+qplot(Learner, F1.Score, data=results, facets= . ~ Data.Split, colour=Balanced, main="F1 Score vs. Learner by Data Split") + coord_flip()
+```
+
+#Let's look into the case of an 80-20% split...
+```{r}
+sampleSplit <- results["Data.Split"]=="80-20%"
+resultsSample <- subset(results, sampleSplit)
+```
+
+```{r}
+qplot(Learner, data=resultsSample, fill=Prediction.Type, main="Learners", xlab="Learner", ylab="Count") + coord_flip()
+```
+
+```{r}
+#Scatter Plot
+qplot(Learner, Accuracy, data=resultsSample, color=Prediction.Type, main="Accuracy vs. Learner with and without Class Imbalance", xlab="Learner", ylab="Accuracy") + facet_grid(. ~ Balanced, labeller=label_both) + geom_text(aes(label=round(Accuracy, digits=2)), vjust=1.6, position=position_dodge(0.2), size=2.5) + coord_flip()
+
+#Bar Chart
+ggplot(data=resultsSample, aes(x=Learner, y=Accuracy, fill=Prediction.Type)) + stat_identity(geom="bar", position=position_dodge2()) + facet_grid(. ~ Balanced, labeller=label_both) + coord_flip() + xlab("Learner") + ylab("Accuracy") + ggtitle("Accuracy vs. Learner with and without Class Imbalance")
+```
+
+```{r}
+#Scatter Plot
+qplot(Learner, Sensitivity, data=resultsSample, color=Prediction.Type, main="Sensitivity vs. Learner with and without Class Imbalance", xlab="Learner", ylab="Sensitivity") + facet_grid(. ~ Balanced, labeller=label_both) + geom_text(aes(label=round(Sensitivity, digits=2)), vjust=1.6, position=position_dodge(0.2), size=2.5) + coord_flip()
+
+#Bar Chart
+ggplot(data=resultsSample, aes(x=Learner, y=Sensitivity, fill=Prediction.Type)) + stat_identity(geom="bar", position=position_dodge2()) + facet_grid(. ~ Balanced, labeller=label_both) + coord_flip() + xlab("Learner") + ylab("Sensitivity") + ggtitle("Sensitivity vs. Learner with and without Class Imbalance")
+```
+
+```{r}
+qplot(Learner, Specificity, data=resultsSample, color=Prediction.Type, main="Specificity vs. Learner with and without Class Imbalance", xlab="Learner", ylab="Specificity") + facet_grid(. ~ Balanced, labeller=label_both) + geom_text(aes(label=round(Specificity, digits=2)), vjust=1.6, position=position_dodge(0.2), size=2.5) + coord_flip()
+
+#Bar Chart
+ggplot(data=resultsSample, aes(x=Learner, y=Specificity, fill=Prediction.Type)) + stat_identity(geom="bar", position=position_dodge2()) + facet_grid(. ~ Balanced, labeller=label_both) + coord_flip() + xlab("Learner") + ylab("Specificity") + ggtitle("Specificity vs. Learner with and without Class Imbalance")
+```
+
+```{r}
+qplot(Learner, Precision, data=resultsSample, color=Prediction.Type, main="Precision vs. Learner with and without Class Imbalance", xlab="Learner", ylab="Precision") + facet_grid(. ~ Balanced, labeller=label_both) + geom_text(aes(label=round(Precision, digits=2)), vjust=1.6, position=position_dodge(0.2), size=2.5) + coord_flip()
+
+#Bar Chart
+ggplot(data=resultsSample, aes(x=Learner, y=Precision, fill=Prediction.Type)) + stat_identity(geom="bar", position=position_dodge2()) + facet_grid(. ~ Balanced, labeller=label_both) + coord_flip() + xlab("Learner") + ylab("Precision") + ggtitle("Precision vs. Learner with and without Class Imbalance")
+```
+
+```{r}
+qplot(Learner, F1.Score, data=resultsSample, color=Prediction.Type, main="F1 Score vs. Learner with and without Class Imbalance", xlab="Learner", ylab="F1 Score") + facet_grid(. ~ Balanced, labeller=label_both) + geom_text(aes(label=round(F1.Score, digits=2)), vjust=1.6, position=position_dodge(0.2), size=2.5) + coord_flip()
+
+#Bar Chart
+ggplot(data=resultsSample, aes(x=Learner, y=F1.Score, fill=Prediction.Type)) + stat_identity(geom="bar", position=position_dodge2()) + facet_grid(. ~ Balanced, labeller=label_both) + coord_flip() + xlab("Learner") + ylab("F1 Score") + ggtitle("F1 Score vs. Learner with and without Class Imbalance")
+```
+
+#View the confusion matrices for all learners...
+```{r}
+for (i in 1:27)
+{
+  cm <- matrix(0, nrow=2, ncol=2)
+  cm[1,1] <- resultsSample$TN[i]
+  cm[2,1] <- resultsSample$FN[i]
+  cm[1,2] <- resultsSample$FP[i]
+  cm[2,2] <- resultsSample$TP[i]
+  print(resultsSample$Learner[i])
+  print(cm)
+  cat("\n")
+}
+```
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
