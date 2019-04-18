@@ -137,7 +137,7 @@ for(j in jobSamples)
     
     c$Activity <- tolower(c$Activity)
     
-    ###desperity for a job
+    ###job search activity
     if(grepl("actively looking", c$Activity, fixed=TRUE))
     {
       job_candidate[index,5] <- 1
