@@ -332,7 +332,7 @@ par(col = "black")
 ```
 
 
-###Candidates Data:
+###Candidates Data
 ```{r}
 cl.candidates.fit <- kmeans(candidatesDataNumeric, iter.max = 10, i_choice1)
 
@@ -362,7 +362,7 @@ plot(candidatesDataNumeric[,1:8], col=cl.candidates.fit$cluster, pch=cl.candidat
 ```
 
 
-###Jobs Data:
+###Jobs Data
 ```{r}
 #perform k-means clustering...
 cl.jobs.fit <- kmeans(jobsDataNumeric, iter.max = 10, i_choice2)
@@ -394,7 +394,7 @@ plot(jobsDataNumeric[,1:8], col=cl.jobs.fit$cluster, pch=cl.jobs.fit$cluster, ma
 ```
 
 
-###Job-Candidate Data:
+###Job-Candidate Data
 ```{r}
 #perform K-means clustering analysis
 cl.fit1 <- kmeans(job_candidate[,1:9], iter.max = 10, i_choice3)
