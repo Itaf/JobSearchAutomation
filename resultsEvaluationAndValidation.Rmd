@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Job Search Automation - Evaluation and Validation"
 output: html_notebook
 ---
 

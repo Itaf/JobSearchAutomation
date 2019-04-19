@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Job Search Automation - Data Analysis"
 output: 
   html_notebook: 
     toc: yes
